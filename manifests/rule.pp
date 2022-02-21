@@ -29,20 +29,21 @@
 #   }
 #
 define nry_nft::rule(
-  String                 $rule = $name,
+  Variant[String,Array[String]] $rule = $name,
   Nry_nft::String        $chain = 'input',
   Nry_nft::AddressFamily $af = 'inet',
   Nry_nft::String        $table = 'filter',
   Optional[String]       $description = undef,
   Integer                $order = 200,
 ) {
+  $joined_rule = Array($rule, true).join(";\n")
   nry_nft::fragment { "nry_nft::rule::${name}":
     target  => "050-rules/${af}/${table}/${chain}",
     content => delete_undef_values([
       if $description =~ Undef { "# nrf_nft::rule ${name}" }
         elsif $description != '' { "# ${description}" }
         else { undef },
-      "table ${af} ${table} { chain ${chain} { ${rule}; }; }"
+      "table ${af} ${table} { chain ${chain} { ${joined_rule}; }; }"
       ]).join("\n"),
     order   => $order,
   }
