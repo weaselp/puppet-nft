@@ -76,3 +76,31 @@ class nryo_nft::rule::ssh(
   }
 }
 ```
+
+And another one:
+
+```puppet
+class mroles::puppetagent (
+) {
+# [...]
+# $addresses = [...]
+
+  # export a firewall rule to the puppet server
+  @@nry_nft::simple{ "puppet-${trusted['certname']}":
+    tag   => "to-${server_facts['servername']}",
+    saddr => $addresses,
+    chain => 'puppetserver',
+  }
+}
+```
+
+```puppet
+class mroles::puppetserver (
+) {
+  nry_nft::chain{ 'puppetserver': }
+  nry_nft::rule{ 'tcp dport 8140 counter jump puppetserver': chain => 'services_tcp' }
+
+  # Collect firewall rules exported to us
+  Nry_nft::Simple <<| tag == "to-${trusted['certname']}" |>>
+}
+```
