@@ -37,14 +37,15 @@ define nry_nft::simple(
     $dport_rule = "${proto} dport { ${dport.join(', ')} }"
   }
   $counterstring = [undef, 'counter'][Integer($counter)]
+  $commentstring = "comment \"${name}\""
   $rule =
-    unless empty($ip6) { [ [$dport_rule, "ip6 saddr { ${ip6.join(', ')} }", $counterstring, $action].delete_undef_values().join(' ') ] }
+    unless empty($ip6) { [ [$dport_rule, "ip6 saddr { ${ip6.join(', ')} }", $counterstring, $action, $commentstring].delete_undef_values().join(' ') ] }
     else { [] }
     +
-    unless empty($ip4) { [ [$dport_rule, "ip saddr { ${ip4.join(', ')} }", $counterstring, $action].delete_undef_values().join(' ') ] }
+    unless empty($ip4) { [ [$dport_rule, "ip saddr { ${ip4.join(', ')} }", $counterstring, $action, $commentstring].delete_undef_values().join(' ') ] }
     else { [] }
     +
-    if ($saddr =~ Undef) { [ [$dport_rule, $counterstring, $action].delete_undef_values().join(' ') ] }
+    if ($saddr =~ Undef) { [ [$dport_rule, $counterstring, $action, $commentstring].delete_undef_values().join(' ') ] }
     else { [] }
 
   nry_nft::rule{ "nry_nft::simple:${name}":
