@@ -24,6 +24,18 @@
         "10",
         "11"
       ]
+    },
+    {
+      "operatingsystem": "Rocky",
+      "operatingsystemrelease": [
+        "8"
+      ]
+    },
+    {
+      "operatingsystem": "RedHat",
+      "operatingsystemrelease": [
+        "8"
+      ]
     }
   ],
   "requirements": [

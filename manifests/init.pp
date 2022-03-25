@@ -13,8 +13,23 @@ class nry_nft(
   Stdlib::AbsolutePath $dir_prod = '/etc/nftables',
 
   Stdlib::AbsolutePath $main_test = "${dir_test}/main.conf",
-  Stdlib::AbsolutePath $main_prod = '/etc/nftables.conf',
+  Stdlib::AbsolutePath $main_prod = $facts['os']['family'] ? {
+    'Debian' => '/etc/nftables.conf',
+    'RedHat' => '/etc/sysconfig/nftables.conf',
+    default  => '/etc/nftables.conf',
+  }
 ) {
+  package { 'nftables':
+    ensure => installed,
+  }
+
+  if $facts['os']['family'] == 'RedHat' {
+    service{'firewalld':
+      ensure => 'stopped',
+      enable => false,
+    }
+  }
+
   exec { 'nft check':
     refreshonly => true,
     command     => "/usr/sbin/nft -c -f '${nry_nft::main_test}' || ( echo '# broken config flag' >> '${nry_nft::main_test}' && false)",
@@ -28,9 +43,6 @@ class nry_nft(
     require    => File[$nry_nft::main_prod],
   }
 
-  package { 'nftables':
-    ensure => installed,
-  }
   file { [$nry_nft::dir_test, $nry_nft::dir_prod]:
     ensure  => directory,
     mode    => '0755',
