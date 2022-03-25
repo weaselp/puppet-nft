@@ -1,7 +1,11 @@
 # A simple rule from IP addresses to a TCP or UDP port
 #
-# @param saddr        A list of source addresses.  If not provided, allow from everywhere.
-# @param dport        A target port
+# @param saddr
+#   A list of source addresses.
+#   If not provided, allow from everywhere.
+# @param dport
+#   A target port or list of target ports.
+#   If not provided, allow all ports.
 # @param proto        Whether this is a TCP or UDP port
 # @param chain        The name of the chain
 # @param af           Address family (inet, ip, ip6, etc)
@@ -10,7 +14,7 @@
 # @param order        Where to put this rule in the concat file
 define nry_nft::simple(
   Optional[Variant[Stdlib::IP::Address, Array[Stdlib::IP::Address]]] $saddr = undef,
-  Optional[Stdlib::Port]  $dport = undef,
+  Optional[Variant[Stdlib::Port,Array[Stdlib::Port,1]]]  $dport = undef,
   Enum['tcp', 'udp']      $proto = 'tcp',
   Nry_nft::String         $chain = 'input',
   Nry_nft::AddressFamily  $af = 'inet',
@@ -22,7 +26,8 @@ define nry_nft::simple(
   $ip6 = pick($saddr, []).filter |$a| { $a =~ Stdlib::IP::Address::V6 }
 
   if $dport {
-    $dport_rule = "${proto} dport ${dport}"
+    $dport_list = Array($dport, true)
+    $dport_rule = "${proto} dport { ${dport_list.join(', ')} }"
   } else {
     $dport_rule = undef
   }
