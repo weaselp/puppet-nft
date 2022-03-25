@@ -38,11 +38,23 @@ define nry_nft::simple(
   }
   $counterstring = [undef, 'counter'][Integer($counter)]
   $commentstring = "comment \"${name}\""
+
+  $ip6_saddr = $ip6.length() ? {
+    0       => undef,
+    1       => "ip6 saddr ${ip6[0]}",
+    default => "ip6 saddr { ${ip6.join(', ')} }",
+  }
+  $ip4_saddr = $ip4.length() ? {
+    0       => undef,
+    1       => "ip saddr ${ip4[0]}",
+    default => "ip saddr { ${ip4.join(', ')} }",
+  }
+
   $rule =
-    unless empty($ip6) { [ [$dport_rule, "ip6 saddr { ${ip6.join(', ')} }", $counterstring, $action, $commentstring].delete_undef_values().join(' ') ] }
+    if ($ip6_saddr) { [ [$dport_rule, $ip6_saddr, $counterstring, $action, $commentstring].delete_undef_values().join(' ') ] }
     else { [] }
     +
-    unless empty($ip4) { [ [$dport_rule, "ip saddr { ${ip4.join(', ')} }", $counterstring, $action, $commentstring].delete_undef_values().join(' ') ] }
+    if ($ip4_saddr) { [ [$dport_rule, $ip4_saddr, $counterstring, $action, $commentstring].delete_undef_values().join(' ') ] }
     else { [] }
     +
     if ($saddr =~ Undef) { [ [$dport_rule, $counterstring, $action, $commentstring].delete_undef_values().join(' ') ] }
