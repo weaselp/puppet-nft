@@ -39,9 +39,10 @@ define nry_nft::chain(
   Optional[Nry_nft::ChainType]     $type     = if $base_chain { $table } else { undef },
   Optional[Nry_nft::ChainPriority] $priority = if $base_chain {
     "${table}-${chain}" ? {
-      'nat-prerouting'  => 'dstnat',
-      'nat-postrouting' => 'srcnat',
-      default           => 'filter' } } else { undef },
+      'nat-prerouting'    => 'dstnat',
+      'nat-postrouting'   => 'srcnat',
+      'filter-prerouting' => 'raw',
+      default             => 'filter' } } else { undef },
   Integer $rules_order = 0,
   Optional[Array[String]] $rules = undef,
 ) {
