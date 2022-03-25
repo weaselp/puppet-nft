@@ -27,10 +27,10 @@ define nry_nft::simple(
     $dport_rule = undef
   }
   $rule =
-    unless empty($ip4) { [ "${dport_rule} ip6 saddr { ${ip6.join(', ')} } counter accept" ] }
+    unless empty($ip6) { [ "${dport_rule} ip6 saddr { ${ip6.join(', ')} } counter accept" ] }
     else { [] }
     +
-    unless empty($ip6) { [ "${dport_rule} ip saddr { ${ip4.join(', ')} } counter accept" ] }
+    unless empty($ip4) { [ "${dport_rule} ip saddr { ${ip4.join(', ')} } counter accept" ] }
     else { {} }
 
   nry_nft::rule{ "nry_nft::simple:${name}":
