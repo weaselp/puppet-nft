@@ -12,6 +12,8 @@
 # @param table        The name of the table
 # @param description  A description or comment for this rule to put into the nftables config
 # @param order        Where to put this rule in the concat file
+# @param counter      Whether to add a counter to this rule
+# @param action       What to do with matches (accept, drop, ..)
 define nry_nft::simple(
   Optional[Variant[Stdlib::IP::Address, Array[Stdlib::IP::Address]]] $saddr = undef,
   Optional[Variant[Stdlib::Port,Array[Stdlib::Port,1]]]  $dport = undef,
@@ -21,6 +23,8 @@ define nry_nft::simple(
   Nry_nft::String         $table = 'filter',
   Optional[String]        $description = undef,
   Integer                 $order = 200,
+  Boolean                 $counter = true,
+  String                  $action = 'accept',
 ) {
   $ip4 = pick($saddr, []).filter |$a| { $a !~ Stdlib::IP::Address::V6 }
   $ip6 = pick($saddr, []).filter |$a| { $a =~ Stdlib::IP::Address::V6 }
@@ -31,14 +35,15 @@ define nry_nft::simple(
   } else {
     $dport_rule = undef
   }
+  $counterstring = [undef, 'counter'][Integer($counter)]
   $rule =
-    unless empty($ip6) { [ "${dport_rule} ip6 saddr { ${ip6.join(', ')} } counter accept" ] }
+    unless empty($ip6) { [ "${dport_rule} ip6 saddr { ${ip6.join(', ')} } ${counterstring} ${action}" ] }
     else { [] }
     +
-    unless empty($ip4) { [ "${dport_rule} ip saddr { ${ip4.join(', ')} } counter accept" ] }
+    unless empty($ip4) { [ "${dport_rule} ip saddr { ${ip4.join(', ')} } ${counterstring} ${action}" ] }
     else { [] }
     +
-    if ($saddr =~ Undef) { [ "${dport_rule} counter accept" ] }
+    if ($saddr =~ Undef) { [ "${dport_rule} ${counterstring} ${action}" ] }
     else { [] }
 
   nry_nft::rule{ "nry_nft::simple:${name}":
