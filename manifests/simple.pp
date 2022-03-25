@@ -29,21 +29,22 @@ define nry_nft::simple(
   $ip4 = pick($saddr, []).filter |$a| { $a !~ Stdlib::IP::Address::V6 }
   $ip6 = pick($saddr, []).filter |$a| { $a =~ Stdlib::IP::Address::V6 }
 
-  if $dport {
-    $dport_list = Array($dport, true)
-    $dport_rule = "${proto} dport { ${dport_list.join(', ')} }"
-  } else {
+  if $dport =~ Undef {
     $dport_rule = undef
+  } elsif $dport =~ Stdlib::Port {
+    $dport_rule = "${proto} dport ${dport}"
+  } else {
+    $dport_rule = "${proto} dport { ${dport.join(', ')} }"
   }
   $counterstring = [undef, 'counter'][Integer($counter)]
   $rule =
-    unless empty($ip6) { [ "${dport_rule} ip6 saddr { ${ip6.join(', ')} } ${counterstring} ${action}" ] }
+    unless empty($ip6) { [ [$dport_rule, "ip6 saddr { ${ip6.join(', ')} }", $counterstring, $action].delete_undef_values().join(' ') ] }
     else { [] }
     +
-    unless empty($ip4) { [ "${dport_rule} ip saddr { ${ip4.join(', ')} } ${counterstring} ${action}" ] }
+    unless empty($ip4) { [ [$dport_rule, "ip saddr { ${ip4.join(', ')} }", $counterstring, $action].delete_undef_values().join(' ') ] }
     else { [] }
     +
-    if ($saddr =~ Undef) { [ "${dport_rule} ${counterstring} ${action}" ] }
+    if ($saddr =~ Undef) { [ [$dport_rule, $counterstring, $action].delete_undef_values().join(' ') ] }
     else { [] }
 
   nry_nft::rule{ "nry_nft::simple:${name}":
