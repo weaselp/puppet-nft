@@ -26,8 +26,8 @@ define nry_nft::simple(
   Boolean                 $counter = true,
   String                  $action = 'accept',
 ) {
-  $ip4 = pick($saddr, []).filter |$a| { $a !~ Stdlib::IP::Address::V6 }
-  $ip6 = pick($saddr, []).filter |$a| { $a =~ Stdlib::IP::Address::V6 }
+  $ip4 = Array(pick($saddr, []), true).filter |$a| { $a !~ Stdlib::IP::Address::V6 }
+  $ip6 = Array(pick($saddr, []), true).filter |$a| { $a =~ Stdlib::IP::Address::V6 }
 
   if $dport =~ Undef {
     $dport_rule = undef
