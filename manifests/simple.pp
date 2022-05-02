@@ -14,13 +14,13 @@
 # @param order        Where to put this rule in the concat file
 # @param counter      Whether to add a counter to this rule
 # @param action       What to do with matches (accept, drop, ..)
-define nry_nft::simple(
+define nft::simple(
   Optional[Variant[Stdlib::IP::Address, Array[Stdlib::IP::Address]]] $saddr = undef,
   Optional[Variant[Stdlib::Port,Array[Stdlib::Port,1]]]  $dport = undef,
   Enum['tcp', 'udp']      $proto = 'tcp',
-  Nry_nft::String         $chain = 'input',
-  Nry_nft::AddressFamily  $af = 'inet',
-  Nry_nft::String         $table = 'filter',
+  Nft::String         $chain = 'input',
+  Nft::AddressFamily  $af = 'inet',
+  Nft::String         $table = 'filter',
   Optional[String]        $description = undef,
   Integer                 $order = 200,
   Boolean                 $counter = true,
@@ -60,7 +60,7 @@ define nry_nft::simple(
     if ($saddr =~ Undef) { [ [$dport_rule, $counterstring, $action, $commentstring].delete_undef_values().join(' ') ] }
     else { [] }
 
-  nry_nft::rule{ "nry_nft::simple:${name}":
+  nft::rule{ "nft::simple:${name}":
     rule        => $rule,
     chain       => $chain,
     af          => $af,

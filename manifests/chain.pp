@@ -15,14 +15,14 @@
 # @param type        If a base chain, the type of this chain (filter, nat, route)
 # @param priority    If a base chain, the priority of this chain.
 # @param rules_order If we pass a set of rules to this chain here, at what order number to add it to the concat.
-# @param rules       A list of rules to pass here directly.  More can be added later using nry_nft::rule.
+# @param rules       A list of rules to pass here directly.  More can be added later using nft::rule.
 #
 # Example:
-#   nry_nft::chain{ 'input': }
-#   nry_nft::chain{ 'forward': }
-#   nry_nft::chain{ 'output': }
+#   nft::chain{ 'input': }
+#   nft::chain{ 'forward': }
+#   nft::chain{ 'output': }
 #
-#   nry_nft::chain{ 'log_reject_drop':
+#   nft::chain{ 'log_reject_drop':
 #     rules => [
 #       "limit rate 5/minute burst 5 packets log flags all counter",
 #       "limit rate 60/minute burst 120 packets meta l4proto tcp counter reject with tcp reset",
@@ -30,14 +30,14 @@
 #       'counter drop',
 #     ]
 #   }
-define nry_nft::chain(
-  Nry_nft::String $chain = $name,
-  Nry_nft::AddressFamily $af = 'inet',
-  Nry_nft::String $table = 'filter',
-  Boolean $base_chain = $chain =~ Nry_nft::ChainHook,
-  Optional[Nry_nft::ChainHook]     $hook     = if $base_chain { $chain } else { undef },
-  Optional[Nry_nft::ChainType]     $type     = if $base_chain { $table } else { undef },
-  Optional[Nry_nft::ChainPriority] $priority = if $base_chain {
+define nft::chain(
+  Nft::String $chain = $name,
+  Nft::AddressFamily $af = 'inet',
+  Nft::String $table = 'filter',
+  Boolean $base_chain = $chain =~ Nft::ChainHook,
+  Optional[Nft::ChainHook]     $hook     = if $base_chain { $chain } else { undef },
+  Optional[Nft::ChainType]     $type     = if $base_chain { $table } else { undef },
+  Optional[Nft::ChainPriority] $priority = if $base_chain {
     "${table}-${chain}" ? {
       'nat-prerouting'    => 'dstnat',
       'nat-postrouting'   => 'srcnat',
@@ -52,17 +52,17 @@ define nry_nft::chain(
     $content = "table ${af} ${table} { chain ${chain} {  }; }"
   }
 
-  ensure_resource('nry_nft::file', '010-chains', { })
-  nry_nft::fragment { "chains/${af}/${table}/${chain}":
+  ensure_resource('nft::file', '010-chains', { })
+  nft::fragment { "chains/${af}/${table}/${chain}":
     target  => '010-chains',
     content => $content,
   }
 
-  nry_nft::file { "050-rules/${af}/${table}/${chain}":
+  nft::file { "050-rules/${af}/${table}/${chain}":
   }
 
   if $rules {
-    nry_nft::rule{ "chain-${chain}-initrules":
+    nft::rule{ "chain-${chain}-initrules":
       rule  => $rules.join(";\n  "),
       chain => $chain,
       order => $rules_order,

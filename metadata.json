@@ -1,12 +1,12 @@
 {
-  "name": "weasel-nry_nft",
+  "name": "weasel-nft",
   "version": "0.0.1",
   "author": "Peter Palfrader",
   "summary": "configure nftables firewalls using puppet",
   "license": "MIT",
-  "source": "https://github.com/weaselp/puppet-nry_nft",
-  "project_page": "https://github.com/weaselp/puppet-nry_nft",
-  "issues_url": "https://github.com/weaselp/puppet-nry_nft",
+  "source": "https://github.com/weaselp/puppet-nft",
+  "project_page": "https://github.com/weaselp/puppet-nft",
+  "issues_url": "https://github.com/weaselp/puppet-nft",
   "dependencies": [
     {
       "name": "puppetlabs/stdlib",

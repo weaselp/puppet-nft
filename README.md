@@ -2,7 +2,7 @@
 
 ## Overview
 
-The ``nry_nft`` module provides building blocks for making an nftables firewall using puppet.
+This ``nft`` module provides building blocks for making an nftables firewall using puppet.
 It does not come with a policy but it provides the infrastructure for building your own.
 
 ## Usage
@@ -11,20 +11,20 @@ Here's an example:
 
 ```puppet
 # local noreply.org nft policies
-class nryo_nft() {
+class my_nft() {
   $log_limit_rate = '5/minute burst 5 packets'
   $reject_rate = '60/minute burst 120 packets'
 
-  class{ 'nry_nft': }
+  class{ 'nft': }
 
-  nry_nft::chain{ 'input': }
-  nry_nft::chain{ 'forward': }
-  nry_nft::chain{ 'output': }
+  nft::chain{ 'input': }
+  nft::chain{ 'forward': }
+  nft::chain{ 'output': }
 
-  nry_nft::chain{ 'services_tcp': }
-  nry_nft::chain{ 'services_udp': }
+  nft::chain{ 'services_tcp': }
+  nft::chain{ 'services_udp': }
 
-  nry_nft::rule{
+  nft::rule{
     'iif lo counter accept': order => 100;
     'meta l4proto icmp counter accept': order => 101;
     'meta l4proto ipv6-icmp counter accept': order => 101;
@@ -36,7 +36,7 @@ class nryo_nft() {
     'goto log_reject_drop': order => 9900;
   }
 
-  nry_nft::chain{ 'log_reject_drop':
+  nft::chain{ 'log_reject_drop':
     rules => [
       "limit rate ${log_limit_rate} log flags all counter",
       "limit rate ${reject_rate} meta l4proto tcp counter reject with tcp reset",
@@ -45,7 +45,7 @@ class nryo_nft() {
     ]
   }
 
-  include nryo_nft::rule::ssh
+  include my_nft::rule::ssh
 }
 ```
 
@@ -53,11 +53,11 @@ class nryo_nft() {
 # Allow ssh either from everywhere or from the networks in src
 #
 # @param src Hosts to allow ssh connections from
-class nryo_nft::rule::ssh(
+class my_nft::rule::ssh(
   Optional[Array[Stdlib::IP::Address]] $src = undef,
 ) {
   if $src =~ Undef {
-    nry_nft::rule{ 'allow-ssh':
+    nft::rule{ 'allow-ssh':
       rule  => 'tcp dport ssh counter accept',
       chain => 'services_tcp',
     }
@@ -65,11 +65,11 @@ class nryo_nft::rule::ssh(
     $ip4 = $src.filter |$a| { $a !~ Stdlib::IP::Address::V6 }
     $ip6 = $src.filter |$a| { $a =~ Stdlib::IP::Address::V6 }
 
-    nry_nft::rule{ 'allow-ssh4':
+    nft::rule{ 'allow-ssh4':
       rule  => "tcp dport ssh ip  saddr { ${ip4.join(', ')} } counter accept",
       chain => 'services_tcp',
     }
-    nry_nft::rule{ 'allow-ssh6':
+    nft::rule{ 'allow-ssh6':
       rule  => "tcp dport ssh ip6 saddr { ${ip6.join(', ')} } counter accept",
       chain => 'services_tcp',
     }
@@ -80,13 +80,13 @@ class nryo_nft::rule::ssh(
 And another one:
 
 ```puppet
-class mroles::puppetagent (
+class mprofiles::puppetagent (
 ) {
 # [...]
 # $addresses = [...]
 
   # export a firewall rule to the puppet server
-  @@nry_nft::simple{ "puppet-${trusted['certname']}":
+  @@nft::simple{ "puppet-${trusted['certname']}":
     tag   => "to-${server_facts['servername']}",
     saddr => $addresses,
     chain => 'puppetserver',
@@ -95,12 +95,12 @@ class mroles::puppetagent (
 ```
 
 ```puppet
-class mroles::puppetserver (
+class mprofiles::puppetserver (
 ) {
-  nry_nft::chain{ 'puppetserver': }
-  nry_nft::rule{ 'tcp dport 8140 counter jump puppetserver': chain => 'services_tcp' }
+  nft::chain{ 'puppetserver': }
+  nft::rule{ 'tcp dport 8140 counter jump puppetserver': chain => 'services_tcp' }
 
   # Collect firewall rules exported to us
-  Nry_nft::Simple <<| tag == "to-${trusted['certname']}" |>>
+  Nft::Simple <<| tag == "to-${trusted['certname']}" |>>
 }
 ```

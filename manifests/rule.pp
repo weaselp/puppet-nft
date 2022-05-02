@@ -11,10 +11,10 @@
 # @param order        Where to put this rule in the concat file
 #
 # Example;
-#   nry_nft::chain{ 'input': }
-#   nry_nft::chain{ 'services_tcp': }
+#   nft::chain{ 'input': }
+#   nft::chain{ 'services_tcp': }
 #
-#   nry_nft::rule{
+#   nft::rule{
 #     'iif lo counter accept': order => 100;
 #     'meta l4proto icmp counter accept': order => 101;
 #     'meta l4proto ipv6-icmp counter accept': order => 101;
@@ -23,21 +23,21 @@
 #     'counter drop': order => 9000;
 #   }
 #
-#   nry_nft::rule{ 'allow-https':
+#   nft::rule{ 'allow-https':
 #     rule  => 'tcp dport https counter accept',
 #     chain => 'services_tcp',
 #   }
 #
-define nry_nft::rule(
+define nft::rule(
   Variant[String,Array[String]] $rule = $name,
-  Nry_nft::String        $chain = 'input',
-  Nry_nft::AddressFamily $af = 'inet',
-  Nry_nft::String        $table = 'filter',
+  Nft::String        $chain = 'input',
+  Nft::AddressFamily $af = 'inet',
+  Nft::String        $table = 'filter',
   Optional[String]       $description = undef,
   Integer                $order = 200,
 ) {
   $joined_rule = Array($rule, true).join(";\n")
-  nry_nft::fragment { "nry_nft::rule::${name}":
+  nft::fragment { "nft::rule::${name}":
     target  => "050-rules/${af}/${table}/${chain}",
     content => delete_undef_values([
       if $description =~ Undef { "# nrf_nft::rule ${name}" }
