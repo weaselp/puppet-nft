@@ -22,7 +22,7 @@ define nft::simple(
   Nft::AddressFamily  $af = 'inet',
   Nft::String         $table = 'filter',
   Optional[String]        $description = undef,
-  Integer                 $order = 200,
+  Optional[Integer]       $order = undef,
   Boolean                 $counter = true,
   String                  $action = 'accept',
 ) {
