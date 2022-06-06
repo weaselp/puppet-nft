@@ -4,7 +4,7 @@
 #   A list of source addresses.
 #   If not provided, allow from everywhere.
 # @param dport
-#   A target port or list of target ports.
+#   A target port, list of target ports, or a range (as string) from-to target port.
 #   If not provided, allow all ports.
 # @param proto        Whether this is a TCP or UDP port
 # @param chain        The name of the chain
@@ -16,7 +16,7 @@
 # @param action       What to do with matches (accept, drop, ..)
 define nft::simple(
   Optional[Variant[Stdlib::IP::Address, Array[Stdlib::IP::Address]]] $saddr = undef,
-  Optional[Variant[Stdlib::Port,Array[Stdlib::Port,1]]]  $dport = undef,
+  Optional[Variant[Stdlib::Port,Array[Stdlib::Port,1],Pattern[/\A[0-9]+-[0-9]+\z/]]] $dport = undef,
   Enum['tcp', 'udp']      $proto = 'tcp',
   Nft::String         $chain = 'input',
   Nft::AddressFamily  $af = 'inet',
@@ -32,6 +32,8 @@ define nft::simple(
   if $dport =~ Undef {
     $dport_rule = undef
   } elsif $dport =~ Stdlib::Port {
+    $dport_rule = "${proto} dport ${dport}"
+  } elsif $dport =~ String {
     $dport_rule = "${proto} dport ${dport}"
   } else {
     $dport_rule = "${proto} dport { ${dport.join(', ')} }"
