@@ -39,7 +39,8 @@ class nft(
     ensure     => running,
     enable     => true,
     hasrestart => true,
-    restart    => '/usr/bin/systemctl reload nftables',
+    path       => $facts['path'],
+    restart    => 'systemctl reload nftables',
     require    => File[$nft::main_prod],
   }
 
