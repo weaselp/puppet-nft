@@ -16,7 +16,9 @@
 #     with an empty list (after AF filtering) meaning everything is allowed.
 # @param dport
 #   A target port, list of target ports, or a range (as string) from-to target port.
-#   If not provided, allow all ports.
+#   If not provided, do not match on ports
+# @param sport
+#   A sourceport port, list of target ports, or a range (as string) from-to source port.
 # @param proto        Whether this is a TCP or UDP port
 # @param chain        The name of the chain
 # @param af           Address family (inet, ip, ip6, etc)
@@ -31,6 +33,7 @@ define nft::simple(
   Optional[Variant[Stdlib::IP::Address, Array[Stdlib::IP::Address]]] $saddr = undef,
   Optional[Variant[Stdlib::IP::Address, Array[Stdlib::IP::Address]]] $daddr = undef,
   Optional[Variant[Stdlib::Port,Array[Stdlib::Port,1],Pattern[/\A[0-9]+-[0-9]+\z/]]] $dport = undef,
+  Optional[Variant[Stdlib::Port,Array[Stdlib::Port,1],Pattern[/\A[0-9]+-[0-9]+\z/]]] $sport = undef,
   Optional[Array[String, 1]] $iif = undef,
   Optional[Array[String, 1]] $oif = undef,
   Enum['tcp', 'udp']      $proto = 'tcp',
@@ -42,15 +45,22 @@ define nft::simple(
   Boolean                 $counter = true,
   String                  $action = 'accept',
 ) {
-  if $dport =~ Undef {
-    $dport_rule = undef
-  } elsif $dport =~ Stdlib::Port {
-    $dport_rule = "${proto} dport ${dport}"
-  } elsif $dport =~ String {
-    $dport_rule = "${proto} dport ${dport}"
-  } else {
-    $dport_rule = "${proto} dport { ${dport.join(', ')} }"
-  }
+  $port_rules =
+    [ ['dport', $dport],
+      ['sport', $sport],
+    ].map |$tuple| {
+      [$port_type, $port_spec] = $tuple
+      if $port_spec =~ Undef {
+        undef
+      } elsif $port_spec =~ Stdlib::Port {
+        "${proto} ${port_type} ${port_spec}"
+      } elsif $port_spec =~ String {
+        "${proto} ${port_type} ${port_spec}"
+      } else {
+        "${proto} ${port_type} { ${port_spec.join(', ')} }"
+      }
+    }
+
   $counterstring = [undef, 'counter'][Integer($counter)]
   $commentstring = "comment \"${name}\""
 
@@ -101,14 +111,14 @@ define nft::simple(
   }
 
   $_rule =
-    if ($ip6_saddr or $ip6_daddr) { [ [$iif_rule, $oif_rule, $dport_rule, $ip6_saddr, $counterstring, $action, $commentstring].delete_undef_values().join(' ') ] }
+    if ($ip6_saddr or $ip6_daddr) { [ ([$iif_rule, $oif_rule] + $port_rules + [$ip6_saddr, $counterstring, $action, $commentstring]).delete_undef_values().join(' ') ] }
     else { [] }
     +
-    if ($ip4_saddr or $ip4_daddr) { [ [$iif_rule, $oif_rule, $dport_rule, $ip4_saddr, $counterstring, $action, $commentstring].delete_undef_values().join(' ') ] }
+    if ($ip4_saddr or $ip4_daddr) { [ ([$iif_rule, $oif_rule] + $port_rules + [$ip4_saddr, $counterstring, $action, $commentstring]).delete_undef_values().join(' ') ] }
     else { [] }
 
   $rule =
-    if $_rule.empty() { [ [$iif_rule, $oif_rule, $dport_rule, $counterstring, $action, $commentstring].delete_undef_values().join(' ') ] }
+    if $_rule.empty() { [ ([$iif_rule, $oif_rule] + $port_rules + [$counterstring, $action, $commentstring]).delete_undef_values().join(' ') ] }
     else { $_rule }
 
   nft::rule{ "nft::simple:${name}":
