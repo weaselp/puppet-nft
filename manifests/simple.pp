@@ -22,6 +22,8 @@
 # @param af           Address family (inet, ip, ip6, etc)
 # @param table        The name of the table
 # @param description  A description or comment for this rule to put into the nftables config
+# @param iif          A list of in-interfaces to match;  if not provided, do not match on interfaces.
+# @param oif          A list of out to match;  if not provided, do not match on interfaces.
 # @param order        Where to put this rule in the concat file
 # @param counter      Whether to add a counter to this rule
 # @param action       What to do with matches (accept, drop, ..)
@@ -29,6 +31,8 @@ define nft::simple(
   Optional[Variant[Stdlib::IP::Address, Array[Stdlib::IP::Address]]] $saddr = undef,
   Optional[Variant[Stdlib::IP::Address, Array[Stdlib::IP::Address]]] $daddr = undef,
   Optional[Variant[Stdlib::Port,Array[Stdlib::Port,1],Pattern[/\A[0-9]+-[0-9]+\z/]]] $dport = undef,
+  Optional[Array[String, 1]] $iif = undef,
+  Optional[Array[String, 1]] $oif = undef,
   Enum['tcp', 'udp']      $proto = 'tcp',
   Nft::String         $chain = 'input',
   Nft::AddressFamily  $af = 'inet',
@@ -76,15 +80,35 @@ define nft::simple(
     default => "ip daddr { ${dip4.join(', ')} }",
   }
 
+  if $iif {
+    if $iif.size == 1 {
+      $iif_rule = "iif ${iif[0]}"
+    } else {
+      $iif_rule = [ 'iif {', $iif.join(', '), '}'].join(' ')
+    }
+  } else {
+    $iif_rule = undef
+  }
+
+  if $oif {
+    if $oif.size == 1 {
+      $oif_rule = "oif ${oif[0]}"
+    } else {
+      $oif_rule = [ 'oif {', $oif.join(', '), '}'].join(' ')
+    }
+  } else {
+    $oif_rule = undef
+  }
+
   $_rule =
-    if ($ip6_saddr or $ip6_daddr) { [ [$dport_rule, $ip6_saddr, $counterstring, $action, $commentstring].delete_undef_values().join(' ') ] }
+    if ($ip6_saddr or $ip6_daddr) { [ [$iif_rule, $oif_rule, $dport_rule, $ip6_saddr, $counterstring, $action, $commentstring].delete_undef_values().join(' ') ] }
     else { [] }
     +
-    if ($ip4_saddr or $ip4_daddr) { [ [$dport_rule, $ip4_saddr, $counterstring, $action, $commentstring].delete_undef_values().join(' ') ] }
+    if ($ip4_saddr or $ip4_daddr) { [ [$iif_rule, $oif_rule, $dport_rule, $ip4_saddr, $counterstring, $action, $commentstring].delete_undef_values().join(' ') ] }
     else { [] }
 
   $rule =
-    if $_rule.empty() { [ [$dport_rule, $counterstring, $action, $commentstring].delete_undef_values().join(' ') ] }
+    if $_rule.empty() { [ [$iif_rule, $oif_rule, $dport_rule, $counterstring, $action, $commentstring].delete_undef_values().join(' ') ] }
     else { $_rule }
 
   nft::rule{ "nft::simple:${name}":
