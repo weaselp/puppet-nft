@@ -32,8 +32,8 @@
 define nft::simple(
   Optional[Variant[Stdlib::IP::Address, Array[Stdlib::IP::Address]]] $saddr = undef,
   Optional[Variant[Stdlib::IP::Address, Array[Stdlib::IP::Address]]] $daddr = undef,
-  Optional[Variant[Stdlib::Port,Array[Stdlib::Port,1],Pattern[/\A[0-9]+-[0-9]+\z/]]] $dport = undef,
-  Optional[Variant[Stdlib::Port,Array[Stdlib::Port,1],Pattern[/\A[0-9]+-[0-9]+\z/]]] $sport = undef,
+  Optional[Variant[Stdlib::Port,Array[Variant[Stdlib::Port,Pattern[/\A[0-9]+-[0-9]+\z/]],1],Pattern[/\A[0-9]+-[0-9]+\z/]]] $dport = undef,
+  Optional[Variant[Stdlib::Port,Array[Variant[Stdlib::Port,Pattern[/\A[0-9]+-[0-9]+\z/]],1],Pattern[/\A[0-9]+-[0-9]+\z/]]] $sport = undef,
   Optional[Array[String, 1]] $iif = undef,
   Optional[Array[String, 1]] $oif = undef,
   Enum['tcp', 'udp']      $proto = 'tcp',
