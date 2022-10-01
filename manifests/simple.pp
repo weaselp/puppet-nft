@@ -90,35 +90,29 @@ define nft::simple(
     default => "ip daddr { ${dip4.join(', ')} }",
   }
 
-  if $iif {
-    if $iif.size == 1 {
-      $iif_rule = "iif ${iif[0]}"
-    } else {
-      $iif_rule = [ 'iif {', $iif.join(', '), '}'].join(' ')
+  $if_rules =
+    [ ['iif', $iif],
+      ['oif', $oif],
+    ].map |$tuple| {
+      [$if_type, $if_spec] = $tuple
+      if $if_spec =~ Undef {
+        undef
+      } elsif $if_spec.size == 1 {
+        "${if_type} ${if_spec[0]}"
+      } else {
+        "${if_type} {  ${iif.join(', ')} }"
+      }
     }
-  } else {
-    $iif_rule = undef
-  }
-
-  if $oif {
-    if $oif.size == 1 {
-      $oif_rule = "oif ${oif[0]}"
-    } else {
-      $oif_rule = [ 'oif {', $oif.join(', '), '}'].join(' ')
-    }
-  } else {
-    $oif_rule = undef
-  }
 
   $_rule =
-    if ($ip6_saddr or $ip6_daddr) { [ ([$iif_rule, $oif_rule] + $port_rules + [$ip6_saddr, $counterstring, $action, $commentstring]).delete_undef_values().join(' ') ] }
+    if ($ip6_saddr or $ip6_daddr) { [ ($if_rules + $port_rules + [$ip6_saddr, $counterstring, $action, $commentstring]).delete_undef_values().join(' ') ] }
     else { [] }
     +
-    if ($ip4_saddr or $ip4_daddr) { [ ([$iif_rule, $oif_rule] + $port_rules + [$ip4_saddr, $counterstring, $action, $commentstring]).delete_undef_values().join(' ') ] }
+    if ($ip4_saddr or $ip4_daddr) { [ ($if_rules + $port_rules + [$ip4_saddr, $counterstring, $action, $commentstring]).delete_undef_values().join(' ') ] }
     else { [] }
 
   $rule =
-    if $_rule.empty() { [ ([$iif_rule, $oif_rule] + $port_rules + [$counterstring, $action, $commentstring]).delete_undef_values().join(' ') ] }
+    if $_rule.empty() { [ ($if_rules + $port_rules + [$counterstring, $action, $commentstring]).delete_undef_values().join(' ') ] }
     else { $_rule }
 
   nft::rule{ "nft::simple:${name}":
