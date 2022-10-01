@@ -25,7 +25,9 @@
 # @param table        The name of the table
 # @param description  A description or comment for this rule to put into the nftables config
 # @param iif          A list of in-interfaces to match;  if not provided, do not match on interfaces.
-# @param oif          A list of out to match;  if not provided, do not match on interfaces.
+# @param oif          A list of out-interfaces to match;  if not provided, do not match on interfaces.
+# @param iifname      A list of in-interface-namess to match;  if not provided, do not match on interface names.
+# @param oifname      A list of out-interface-names to match;  if not provided, do not match on interface names.
 # @param order        Where to put this rule in the concat file
 # @param counter      Whether to add a counter to this rule
 # @param action       What to do with matches (accept, drop, ..)
@@ -36,6 +38,8 @@ define nft::simple(
   Optional[Variant[Stdlib::Port,Array[Variant[Stdlib::Port,Pattern[/\A[0-9]+-[0-9]+\z/]],1],Pattern[/\A[0-9]+-[0-9]+\z/]]] $sport = undef,
   Optional[Array[String, 1]] $iif = undef,
   Optional[Array[String, 1]] $oif = undef,
+  Optional[Array[String, 1]] $iifname = undef,
+  Optional[Array[String, 1]] $oifname = undef,
   Enum['tcp', 'udp']      $proto = 'tcp',
   Nft::String         $chain = 'input',
   Nft::AddressFamily  $af = 'inet',
@@ -93,6 +97,8 @@ define nft::simple(
   $if_rules =
     [ ['iif', $iif],
       ['oif', $oif],
+      ['iifname', $iifname],
+      ['oifname', $oifname],
     ].map |$tuple| {
       [$if_type, $if_spec] = $tuple
       if $if_spec =~ Undef {
