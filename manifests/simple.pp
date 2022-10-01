@@ -105,10 +105,10 @@ define nft::simple(
     }
 
   $_rule =
-    if ($ip6_saddr or $ip6_daddr) { [ ($if_rules + $port_rules + [$ip6_saddr, $counterstring, $action, $commentstring]).delete_undef_values().join(' ') ] }
+    if ($ip6_saddr or $ip6_daddr) { [ ($if_rules + $port_rules + [$ip6_saddr, $ip6_daddr, $counterstring, $action, $commentstring]).delete_undef_values().join(' ') ] }
     else { [] }
     +
-    if ($ip4_saddr or $ip4_daddr) { [ ($if_rules + $port_rules + [$ip4_saddr, $counterstring, $action, $commentstring]).delete_undef_values().join(' ') ] }
+    if ($ip4_saddr or $ip4_daddr) { [ ($if_rules + $port_rules + [$ip4_saddr, $ip4_daddr, $counterstring, $action, $commentstring]).delete_undef_values().join(' ') ] }
     else { [] }
 
   $rule =
