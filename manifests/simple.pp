@@ -36,10 +36,10 @@ define nft::simple(
   Optional[Variant[Stdlib::IP::Address, Array[Stdlib::IP::Address]]] $daddr = undef,
   Optional[Variant[Stdlib::Port,Array[Variant[Stdlib::Port,Pattern[/\A[0-9]+-[0-9]+\z/]],1],Pattern[/\A[0-9]+-[0-9]+\z/]]] $dport = undef,
   Optional[Variant[Stdlib::Port,Array[Variant[Stdlib::Port,Pattern[/\A[0-9]+-[0-9]+\z/]],1],Pattern[/\A[0-9]+-[0-9]+\z/]]] $sport = undef,
-  Optional[Array[String, 1]] $iif = undef,
-  Optional[Array[String, 1]] $oif = undef,
-  Optional[Array[String, 1]] $iifname = undef,
-  Optional[Array[String, 1]] $oifname = undef,
+  Optional[Variant[String,Array[String, 1]]] $iif = undef,
+  Optional[Variant[String,Array[String, 1]]] $oif = undef,
+  Optional[Variant[String,Array[String, 1]]] $iifname = undef,
+  Optional[Variant[String,Array[String, 1]]] $oifname = undef,
   Enum['tcp', 'udp']      $proto = 'tcp',
   Nft::String         $chain = 'input',
   Nft::AddressFamily  $af = 'inet',
@@ -103,10 +103,14 @@ define nft::simple(
       [$if_type, $if_spec] = $tuple
       if $if_spec =~ Undef {
         undef
-      } elsif $if_spec.size == 1 {
+      } elsif $if_spec =~ String {
+        "${if_type} ${if_spec}"
+      } elsif $if_spec =~ Array and $if_spec.size == 1 {
         "${if_type} ${if_spec[0]}"
-      } else {
+      } elsif $if_spec =~ Array {
         "${if_type} {  ${iif.join(', ')} }"
+      } else {
+        fail("Unexpected type for ${if_type}; value is '${if_spec}'.")
       }
     }
 
