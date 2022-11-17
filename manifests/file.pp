@@ -17,7 +17,7 @@ define nft::file(
 
   concat { "nft::file::${filename}":
     path           => $filename_test,
-    mode           => '0644',
+    mode           => '0444',
     owner          => 'root',
     group          => 'root',
     ensure_newline => true,
@@ -29,7 +29,7 @@ define nft::file(
   }
   ~> Exec['nft check']
   -> file { $filename_prod:
-    mode   => '0544',
+    mode   => '0444',
     owner  => 'root',
     group  => 'root',
     source => $filename_test,
