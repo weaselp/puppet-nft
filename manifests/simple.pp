@@ -19,7 +19,9 @@
 #   If not provided, do not match on ports
 # @param sport
 #   A sourceport port, list of target ports, or a range (as string) from-to source port.
-# @param proto        Whether this is a TCP or UDP port
+# @param proto
+#   Whether this is TCP or UDP or something else (given protocol number).
+#   Providing sport and dport may or may not make sense for a given protocol.
 # @param chain        The name of the chain
 # @param af           Address family (inet, ip, ip6, etc)
 # @param table        The name of the table
@@ -40,7 +42,7 @@ define nft::simple(
   Optional[Variant[String,Array[String, 1]]] $oif = undef,
   Optional[Variant[String,Array[String, 1]]] $iifname = undef,
   Optional[Variant[String,Array[String, 1]]] $oifname = undef,
-  Enum['tcp', 'udp']      $proto = 'tcp',
+  Variant[Enum['tcp', 'udp'], Integer] $proto = 'tcp',
   Nft::String         $chain = 'input',
   Nft::AddressFamily  $af = 'inet',
   Nft::String         $table = 'filter',
@@ -49,6 +51,8 @@ define nft::simple(
   Boolean                 $counter = true,
   String                  $action = 'accept',
 ) {
+  $proto_rules = "meta l4proto ${proto}"
+
   $port_rules =
     [ ['dport', $dport],
       ['sport', $sport],
@@ -115,14 +119,14 @@ define nft::simple(
     }
 
   $_rule =
-    if ($ip6_saddr or $ip6_daddr) { [ ($if_rules + $port_rules + [$ip6_saddr, $ip6_daddr, $counterstring, $action, $commentstring]).delete_undef_values().join(' ') ] }
+    if ($ip6_saddr or $ip6_daddr) { [ ($if_rules + $proto_rules + $port_rules + [$ip6_saddr, $ip6_daddr, $counterstring, $action, $commentstring]).delete_undef_values().join(' ') ] }
     else { [] }
     +
-    if ($ip4_saddr or $ip4_daddr) { [ ($if_rules + $port_rules + [$ip4_saddr, $ip4_daddr, $counterstring, $action, $commentstring]).delete_undef_values().join(' ') ] }
+    if ($ip4_saddr or $ip4_daddr) { [ ($if_rules + $proto_rules + $port_rules + [$ip4_saddr, $ip4_daddr, $counterstring, $action, $commentstring]).delete_undef_values().join(' ') ] }
     else { [] }
 
   $rule =
-    if $_rule.empty() { [ ($if_rules + $port_rules + [$counterstring, $action, $commentstring]).delete_undef_values().join(' ') ] }
+    if $_rule.empty() { [ ($if_rules + $proto_rules + $port_rules + [$counterstring, $action, $commentstring]).delete_undef_values().join(' ') ] }
     else { $_rule }
 
   nft::rule{ "nft::simple:${name}":
