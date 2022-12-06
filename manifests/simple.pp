@@ -22,6 +22,7 @@
 # @param proto
 #   Whether this is TCP or UDP or something else (given protocol number).
 #   Providing sport and dport may or may not make sense for a given protocol.
+#   Defaults to 'tcp' if ports are given, none otherwise.
 # @param chain        The name of the chain
 # @param af           Address family (inet, ip, ip6, etc)
 # @param table        The name of the table
@@ -42,7 +43,7 @@ define nft::simple(
   Optional[Variant[String,Array[String, 1]]] $oif = undef,
   Optional[Variant[String,Array[String, 1]]] $iifname = undef,
   Optional[Variant[String,Array[String, 1]]] $oifname = undef,
-  Variant[Enum['tcp', 'udp'], Integer] $proto = 'tcp',
+  Optional[Variant[Enum['tcp', 'udp'], Integer]] $proto = if ($sport !~ Undef or $dport !~ Undef) { 'tcp' } else { undef },
   Nft::String         $chain = 'input',
   Nft::AddressFamily  $af = 'inet',
   Nft::String         $table = 'filter',
@@ -51,7 +52,7 @@ define nft::simple(
   Boolean                 $counter = true,
   String                  $action = 'accept',
 ) {
-  $proto_rules = "meta l4proto ${proto}"
+  $proto_rules = if $proto !~ Undef { ["meta l4proto ${proto}"] } else {}
 
   $port_rules =
     [ ['dport', $dport],
