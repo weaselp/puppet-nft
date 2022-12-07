@@ -113,7 +113,7 @@ define nft::simple(
       } elsif $if_spec =~ Array and $if_spec.size == 1 {
         "${if_type} ${if_spec[0]}"
       } elsif $if_spec =~ Array {
-        "${if_type} {  ${iif.join(', ')} }"
+        "${if_type} {  ${if_spec.join(', ')} }"
       } else {
         fail("Unexpected type for ${if_type}; value is '${if_spec}'.")
       }
