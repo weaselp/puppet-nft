@@ -8,6 +8,9 @@
 # @param dir_prod  Production directory for the live, tested rules
 # @param main_test Staging config file that sources everything else
 # @param main_prod Production config file that sources everything else
+#
+# @param service_enable  enable the nftables service
+# @param service_ensure  whether to have the service running or stopped
 class nft(
   Stdlib::AbsolutePath $dir_test = '/etc/.nftables-staging',
   Stdlib::AbsolutePath $dir_prod = '/etc/nftables',
@@ -17,7 +20,9 @@ class nft(
     'Debian' => '/etc/nftables.conf',
     'RedHat' => '/etc/sysconfig/nftables.conf',
     default  => '/etc/nftables.conf',
-  }
+  },
+  Boolean $service_enable = true,
+  Enum['running', 'stopped'] $service_ensure = if ($service_enable) { 'running' } else { 'stopped' },
 ) {
   package { 'nftables':
     ensure => installed,
@@ -36,8 +41,8 @@ class nft(
     require     => File[$nft::main_test],
   }
   service { 'nftables':
-    ensure     => running,
-    enable     => true,
+    ensure     => $service_ensure,
+    enable     => $service_enable,
     hasrestart => true,
     path       => $facts['path'],
     restart    => 'systemctl reload nftables',
