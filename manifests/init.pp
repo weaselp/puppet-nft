@@ -9,6 +9,12 @@
 # @param main_test Staging config file that sources everything else
 # @param main_prod Production config file that sources everything else
 #
+# @param flush_ruleset
+#   Whether to flush the ruleset at the start, or which tables to flush.
+#   In general, this probably always wants to be true.  However, if you manage
+#   for instance the inet table with this module and say the ip table by some
+#   other means, this can be set to just 'inet'.
+#
 # @param service_enable  enable the nftables service
 # @param service_ensure  whether to have the service running or stopped
 class nft(
@@ -21,6 +27,8 @@ class nft(
     'RedHat' => '/etc/sysconfig/nftables.conf',
     default  => '/etc/nftables.conf',
   },
+  Variant[Boolean, String] $flush_ruleset = true,
+
   Boolean $service_enable = true,
   Enum['running', 'stopped'] $service_ensure = if ($service_enable) { 'running' } else { 'stopped' },
 ) {
@@ -33,6 +41,14 @@ class nft(
       ensure => 'stopped',
       enable => false,
     }
+  }
+
+  if $flush_ruleset =~ String {
+    $_preamble = "flush ruleset ${flush_ruleset}"
+  } elsif $flush_ruleset {
+    $_preamble = 'flush ruleset'
+  } else {
+    $_preamble = ''
   }
 
   exec { 'nft check':
@@ -64,7 +80,7 @@ class nft(
     owner   => 'root',
     group   => 'root',
     content => @("EOF"),
-      flush ruleset
+      ${_preamble}
       include "${nft::dir_test}/*.nft"
       | EOF
   }
@@ -77,7 +93,7 @@ class nft(
       #!/usr/sbin/nft -f
       # This file is managed by Puppet.  Do not edit it here.
 
-      flush ruleset
+      ${_preamble}
       include "${nft::dir_prod}/*.nft"
       | EOF
   }
