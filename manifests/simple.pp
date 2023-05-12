@@ -71,7 +71,12 @@ define nft::simple(
     }
 
   $counterstring = [undef, 'counter'][Integer($counter)]
-  $commentstring = "comment \"${name}\""
+  if $description {
+    $_description = $description.regsubst(/"/, '', 'G')
+    $commentstring = "comment \"${_description} (${name})\""
+  } else {
+    $commentstring = "comment \"${name}\""
+  }
 
   $sip4 = Array(pick($saddr, []), true).filter |$a| { $a !~ Stdlib::IP::Address::V6 }
   $sip6 = Array(pick($saddr, []), true).filter |$a| { $a =~ Stdlib::IP::Address::V6 }
