@@ -17,7 +17,7 @@
 # @param rules_order If we pass a set of rules to this chain here, at what order number to add it to the concat.
 # @param rules       A list of rules to pass here directly.  More can be added later using nft::rule.
 #
-# Example:
+# @example
 #   nft::chain{ 'input': }
 #   nft::chain{ 'forward': }
 #   nft::chain{ 'output': }

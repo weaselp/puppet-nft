@@ -34,6 +34,19 @@
 # @param order        Where to put this rule in the concat file
 # @param counter      Whether to add a counter to this rule
 # @param action       What to do with matches (accept, drop, ..)
+#
+# @example
+#    nft::simple{ 'allow-mta-submission':
+#      saddr => $my_networks,
+#      dport => 587,
+#    }
+#
+# @example
+#    nft::simple{ "allow-extra-ssh":
+#      chain => 'ssh-filter',
+#      saddr => $src_address,
+#    }
+#
 define nft::simple(
   Optional[Variant[Stdlib::IP::Address, Array[Stdlib::IP::Address]]] $saddr = undef,
   Optional[Variant[Stdlib::IP::Address, Array[Stdlib::IP::Address]]] $daddr = undef,

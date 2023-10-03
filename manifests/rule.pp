@@ -1,7 +1,8 @@
 # Create a rule in our nftables config
 #
-# Rules live in chains that belong to tables.  Confer to the nftables documentation
-# for how to write rules.
+# Rules live in chains that belong to tables.  Confer to the nftables
+# documentation for how to write rules.  Also see nft::simple for a more
+# abstracted way of adding rules.
 #
 # @param rule         The actual nftables rule.
 # @param chain        The name of the chain
@@ -10,7 +11,7 @@
 # @param description  A description or comment for this rule to put into the nftables config
 # @param order        Where to put this rule in the concat file
 #
-# Example;
+# @example
 #   nft::chain{ 'input': }
 #   nft::chain{ 'services_tcp': }
 #
