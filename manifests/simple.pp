@@ -23,6 +23,7 @@
 #   Whether this is TCP or UDP or something else (given protocol number).
 #   Providing sport and dport may or may not make sense for a given protocol.
 #   Defaults to 'tcp' if ports are given, none otherwise.
+#   Using a set (i.e. list of ['tcp', 'udp']) is also possible.
 # @param chain        The name of the chain
 # @param af           Address family (inet, ip, ip6, etc)
 # @param table        The name of the table
@@ -43,7 +44,7 @@ define nft::simple(
   Optional[Variant[String,Array[String, 1]]] $oif = undef,
   Optional[Variant[String,Array[String, 1]]] $iifname = undef,
   Optional[Variant[String,Array[String, 1]]] $oifname = undef,
-  Optional[Variant[Enum['tcp', 'udp'], Integer]] $proto = if ($sport !~ Undef or $dport !~ Undef) { 'tcp' } else { undef },
+  Optional[Variant[Enum['tcp', 'udp'], Integer, Array[Enum['tcp', 'udp']]]] $proto = if ($sport !~ Undef or $dport !~ Undef) { 'tcp' } else { undef },
   Nft::String         $chain = 'input',
   Nft::AddressFamily  $af = 'inet',
   Nft::String         $table = 'filter',
@@ -52,21 +53,28 @@ define nft::simple(
   Boolean                 $counter = true,
   String                  $action = 'accept',
 ) {
-  $proto_rules = if $proto !~ Undef { ["meta l4proto ${proto}"] } else {}
+  if $proto =~ Undef {
+    $proto_rules = undef
+  } elsif $proto =~ Array {
+    $proto_rules = ["meta l4proto { ${proto.join(', ')} }"]
+  } else {
+    $proto_rules = ["meta l4proto ${proto}"]
+  }
 
   $port_rules =
     [ ['dport', $dport],
       ['sport', $sport],
     ].map |$tuple| {
       [$port_type, $port_spec] = $tuple
+      $_proto = if $proto =~ Array { 'th' } else { $proto }
       if $port_spec =~ Undef {
         undef
       } elsif $port_spec =~ Stdlib::Port {
-        "${proto} ${port_type} ${port_spec}"
+        "${_proto} ${port_type} ${port_spec}"
       } elsif $port_spec =~ String {
-        "${proto} ${port_type} ${port_spec}"
+        "${_proto} ${port_type} ${port_spec}"
       } else {
-        "${proto} ${port_type} { ${port_spec.join(', ')} }"
+        "${_proto} ${port_type} { ${port_spec.join(', ')} }"
       }
     }
 
