@@ -38,8 +38,10 @@
 # @param counter      Whether to add a counter to this rule
 # @param action       What to do with matches (accept, drop, ..)
 define nft::simple(
-  Optional[Variant[Stdlib::IP::Address, Nft::Setreference, Array[Stdlib::IP::Address]]] $saddr = undef,
-  Optional[Variant[Stdlib::IP::Address, Nft::Setreference, Array[Stdlib::IP::Address]]] $daddr = undef,
+  Optional[Variant[ Stdlib::IP::Address, Nft::Objectreference, Nft::Setreference,
+                    Array[Variant[Stdlib::IP::Address, Nft::Objectreference]]]] $saddr = undef,
+  Optional[Variant[ Stdlib::IP::Address, Nft::Objectreference, Nft::Setreference,
+                    Array[Variant[Stdlib::IP::Address, Nft::Objectreference]]]] $daddr = undef,
   Optional[Variant[Nft::Port, Nft::Portrange, Array[Variant[Nft::Port, Nft::Portrange], 1]]] $dport = undef,
   Optional[Variant[Nft::Port, Nft::Portrange, Array[Variant[Nft::Port, Nft::Portrange], 1]]] $sport = undef,
   Optional[Variant[String,Array[String, 1]]] $iif = undef,
@@ -98,8 +100,8 @@ define nft::simple(
     }
   }.delete_undef_values()
 
-  $sip4 = nft::af_filter_address_or_set($saddr, 'v4')
-  $sip6 = nft::af_filter_address_or_set($saddr, 'v6')
+  $sip4 = nft::af_filter_address_set_object($saddr, 'v4')
+  $sip6 = nft::af_filter_address_set_object($saddr, 'v6')
   $ip6_saddr = $sip6.length() ? {
     0       => undef,
     1       => "ip6 saddr ${sip6[0]}",
@@ -111,8 +113,8 @@ define nft::simple(
     default => "ip saddr { ${sip4.join(', ')} }",
   }
 
-  $dip4 = nft::af_filter_address_or_set($daddr, 'v4')
-  $dip6 = nft::af_filter_address_or_set($daddr, 'v6')
+  $dip4 = nft::af_filter_address_set_object($daddr, 'v4')
+  $dip6 = nft::af_filter_address_set_object($daddr, 'v6')
   $ip6_daddr = $dip6.length() ? {
     0       => undef,
     1       => "ip6 daddr ${dip6[0]}",
