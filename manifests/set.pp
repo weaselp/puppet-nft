@@ -27,7 +27,7 @@ define nft::set(
   $content = "table ${af} ${table} { set ${setname} { type ${type}; ${_flags} }; }"
 
   ensure_resource('nft::file', $target, { })
-  nft::fragment { "chains/${af}/${table}/${setname}":
+  nft::fragment { "sets/${af}/${table}/${setname}":
     target  => $target,
     content => $content,
   }
