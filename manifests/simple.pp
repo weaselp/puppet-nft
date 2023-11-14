@@ -15,10 +15,12 @@
 #     are processed, with saddr and daddr filtering based on the given lists,
 #     with an empty list (after AF filtering) meaning everything is allowed.
 # @param dport
-#   A target port, list of target ports, or a range (as string) from-to target port.
+#   A target port (port number or service name from /etc/services),
+#   A range of ports ("<number>-<number>" as string),
+#   or a list of these.
 #   If not provided, do not match on ports
 # @param sport
-#   A sourceport port, list of target ports, or a range (as string) from-to source port.
+#   Source ports in the same way as dport.
 # @param proto
 #   Whether this is TCP or UDP or something else (given protocol number).
 #   Providing sport and dport may or may not make sense for a given protocol.
@@ -38,13 +40,14 @@
 define nft::simple(
   Optional[Variant[Stdlib::IP::Address, Array[Stdlib::IP::Address]]] $saddr = undef,
   Optional[Variant[Stdlib::IP::Address, Array[Stdlib::IP::Address]]] $daddr = undef,
-  Optional[Variant[Stdlib::Port,Array[Variant[Stdlib::Port,Pattern[/\A[0-9]+-[0-9]+\z/]],1],Pattern[/\A[0-9]+-[0-9]+\z/]]] $dport = undef,
-  Optional[Variant[Stdlib::Port,Array[Variant[Stdlib::Port,Pattern[/\A[0-9]+-[0-9]+\z/]],1],Pattern[/\A[0-9]+-[0-9]+\z/]]] $sport = undef,
+  Optional[Variant[Nft::Port, Nft::Portrange, Array[Variant[Nft::Port, Nft::Portrange], 1]]] $dport = undef,
+  Optional[Variant[Nft::Port, Nft::Portrange, Array[Variant[Nft::Port, Nft::Portrange], 1]]] $sport = undef,
   Optional[Variant[String,Array[String, 1]]] $iif = undef,
   Optional[Variant[String,Array[String, 1]]] $oif = undef,
   Optional[Variant[String,Array[String, 1]]] $iifname = undef,
   Optional[Variant[String,Array[String, 1]]] $oifname = undef,
-  Optional[Variant[Enum['tcp', 'udp'], Integer, Array[Enum['tcp', 'udp']]]] $proto = if ($sport !~ Undef or $dport !~ Undef) { 'tcp' } else { undef },
+  Optional[Variant[Enum['tcp', 'udp'], Integer, Array[Enum['tcp', 'udp']]]]
+    $proto = if ($sport !~ Undef or $dport !~ Undef) { 'tcp' } else { undef },
   Nft::String         $chain = 'input',
   Nft::AddressFamily  $af = 'inet',
   Nft::String         $table = 'filter',
@@ -69,12 +72,10 @@ define nft::simple(
       $_proto = if $proto =~ Array { 'th' } else { $proto }
       if $port_spec =~ Undef {
         undef
-      } elsif $port_spec =~ Stdlib::Port {
-        "${_proto} ${port_type} ${port_spec}"
-      } elsif $port_spec =~ String {
-        "${_proto} ${port_type} ${port_spec}"
-      } else {
+      } elsif $port_spec =~ Array {
         "${_proto} ${port_type} { ${port_spec.join(', ')} }"
+      } else {
+        "${_proto} ${port_type} ${port_spec}"
       }
     }
 
