@@ -1,6 +1,6 @@
 # Create an nftables named set in the nftables config file
 #
-# @param set         The name of the set
+# @param setname     The name of the set
 # @param af          Address family (inet, ip, ip6, etc)
 # @param table       The name of the table
 # @param type        The type of the objects in this set (cf Nft::Settype)
@@ -13,7 +13,7 @@
 #   }
 define nft::set(
   Nft::Settype $type,
-  Nft::String $setname = $name,
+  Nft::Setname $setname = $name,
   Nft::AddressFamily $af = 'inet',
   Nft::String $table = 'filter',
   Array[Nft::Setflag] $flags = [],
