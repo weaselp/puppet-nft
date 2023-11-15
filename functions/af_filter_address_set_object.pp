@@ -27,10 +27,11 @@ function nft::af_filter_address_set_object(
         ($a =~ Nft::Setreference and Nft::Set[ $a.regsubst(/^@/, '') ]['type'] == $expect_set_type ) {
       $a
     } elsif $a =~ Nft::Objectreference {
-      $_a = $a.regsubst(/^\$/, '')
+      $object_name = $a.regsubst(/^\$/, '')
+      $object = Nft::Object_impl[$object_name]
       case $test_target {
-        'v4': { "\$__4_${_a}" }
-        'v6': { "\$__6_${_a}" }
+        'v4': { if $object['have_ipv4'] { "\$__4_${object_name}" } }
+        'v6': { if $object['have_ipv6'] { "\$__6_${object_name}" } }
         default: { fail('Unexpected test_target case') }
       }
     }

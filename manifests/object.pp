@@ -22,28 +22,46 @@ define nft::object(
   Nft::Objectdefine $object_name = $name,
   Array[String] $elements = [],
 ) {
-  $target = '005-objects'
+  # Figure out address family of directly included elements
+  $_non_objects_refs = $elements.filter |$a| { $a !~ Nft::Objectreference }
+  $_ip4           = $_non_objects_refs.filter |$a| { $a =~ Stdlib::IP::Address::V4 }
+  $_ip6           = $_non_objects_refs.filter |$a| { $a =~ Stdlib::IP::Address::V6 }
+  $_non_addresses = $_non_objects_refs.filter |$a| { $a !~ Stdlib::IP::Address::V4 and $a !~ Stdlib::IP::Address::V6 }
 
-  $ip4 = $elements.filter |$a| { $a =~ Stdlib::IP::Address::V4 }
-  $ip6 = $elements.filter |$a| { $a =~ Stdlib::IP::Address::V6 }
-  $object_refs = $elements.filter |$a| { $a =~ Nft::Objectreference }
+  # Figure out address family of included objects
+  $_object_refs = $elements.filter |$a| { $a =~ Nft::Objectreference }
+  $_obj_af_info = Hash($_object_refs.map |$o| {
+    $object_name = $o.regsubst(/^\$/, '')
+    $object = Nft::Object_impl[$object_name]
+    $has_v4 = $object['have_ipv4']
+    $has_v6 = $object['have_ipv6']
+    warning("CNVA Referenced object ${object_name}: ${object}: v4/v6: ${has_v4}/${has_v6}")
+    [ $object_name,
+      {
+        has_v4 => $object['have_ipv4'],
+        has_v6 => $object['have_ipv6'],
+      }
+    ]
+  })
+  $_objects_v4       = $_obj_af_info.filter |$object_name, $object_info| { $object_info['has_v4'] }
+  $_objects_v6       = $_obj_af_info.filter |$object_name, $object_info| { $object_info['has_v6'] }
+  $_objects_non_addr = $_obj_af_info.filter |$object_name, $object_info| { !$object_info['has_v4'] and !$object_info['has_v6'] }
 
-  $contents = {
-    $object_name        => $elements,
-    "__4_${object_name}"=> $ip4 + $object_refs.map |$o| { $_o = $o.regsubst(/^\$/, ''); "\$__4_${_o}" },
-    "__6_${object_name}"=> $ip6 + $object_refs.map |$o| { $_o = $o.regsubst(/^\$/, ''); "\$__6_${_o}" },
-  }.map |$_name, $_elements| {
-    if $_elements.length > 0 {
-      $_str_elements = $_elements.join(",\n  ")
-      "define ${_name} = {\n  ${_str_elements}\n  }"
-    } else {
-      "define ${_name} = {}"
-    }
-  }
+  # Figure out our address family
+  $have_ipv4 = $_ip4.length() > 0 or $_objects_v4.length() > 0
+  $have_ipv6 = $_ip6.length() > 0 or $_objects_v6.length() > 0
 
-  ensure_resource('nft::file', $target, { })
-  nft::fragment { "chains/${object_name}":
-    target  => $target,
-    content => $contents.join("\n"),
+  nft::object_impl { $object_name:
+    object_name       => $object_name,
+    ipv4_elements     => $_ip4,
+    ipv6_elements     => $_ip6,
+    non_addr_elements => $_non_addresses,
+
+    ipv4_objects      => $_objects_v4.keys(),
+    ipv6_objects      => $_objects_v6.keys(),
+    non_addr_objects  => $_objects_non_addr.keys(),
+
+    have_ipv4         => $_ip4.length() > 0 or $_objects_v4.length() > 0,
+    have_ipv6         => $_ip6.length() > 0 or $_objects_v6.length() > 0,
   }
 }
