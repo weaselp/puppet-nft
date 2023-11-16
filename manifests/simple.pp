@@ -1,5 +1,8 @@
 # A simple rule from IP addresses to a TCP or UDP port
 #
+# This is meant to abstract the most common instances of nftables rules.
+# It will never be a way to do them all, nor is that the intention.
+#
 # @param saddr
 #   A list of source addresses.
 #   If not provided, allow from everywhere, but see the explanation at daddr.
@@ -37,6 +40,52 @@
 # @param order        Where to put this rule in the concat file
 # @param counter      Whether to add a counter to this rule
 # @param action       What to do with matches (accept, drop, ..)
+#
+# @example
+#   nft::simple { 'allow-web':
+#     dport   => [80, 443],
+#   }
+# @example
+#   nft::simple { 'allow-ssh':
+#     dport   => 22,
+#     iifname => 'mgmt',
+#   }
+# @example allow-ssh
+#   nft::simple { 'allow-ssh':
+#     iifname => 'mgmt',
+#     dport   => 22,
+#     saddr   => ['10.0.0.0/8', '172.16.0.0/12'],
+#   }
+# @example allow-dns
+#   nft::simple { 'allow-dns':
+#     dport   => 'domain',
+#     proto   => ['tcp', 'udp'],
+#   }
+# @example
+#   nft::simple { 'from-guest-wifi':
+#     iifname => 'wlan0',
+#     action  => 'jump from-guests',
+#   }
+# @example # do not track the incoming traffic
+#   nft::simple { "prerouting-notrack-${title}-${proto}":
+#     chain   => 'prerouting',
+#     iifname => $interface,
+#     proto   => $proto,
+#     dport   => $incoming_dport,
+#     sport   => $incoming_sport,
+#     action  => 'notrack',
+#   }
+# @example nat
+#   nft::chain { 'prerouting':
+#     table => 'nat',
+#   }
+#   nft::simple { 'redirect-incoming-gerrit-ssh':
+#     chain  => 'prerouting',
+#     table  => 'nat',
+#     daddr  => $gerrit_service_ip,
+#     dport  => 22,
+#     action => "redirect to :${gerrit_ssh_port}",
+#   }
 define nft::simple(
   Optional[Variant[ Stdlib::IP::Address, Nft::Objectreference, Nft::Setreference,
                     Array[Variant[Stdlib::IP::Address, Nft::Objectreference]]]] $saddr = undef,
