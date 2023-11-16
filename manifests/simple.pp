@@ -17,6 +17,8 @@
 #   - If the union of saddr and daddr have both IPv4 and IPv6, then both
 #     are processed, with saddr and daddr filtering based on the given lists,
 #     with an empty list (after AF filtering) meaning everything is allowed.
+# @param saddr_not   A negative list of source addresses
+# @param daddr_not   A negative list of destination addresses
 # @param dport
 #   A target port (port number or service name from /etc/services),
 #   A range of ports ("<number>-<number>" as string),
@@ -91,6 +93,10 @@ define nft::simple(
                     Array[Variant[Stdlib::IP::Address, Nft::Objectreference]]]] $saddr = undef,
   Optional[Variant[ Stdlib::IP::Address, Nft::Objectreference, Nft::Setreference,
                     Array[Variant[Stdlib::IP::Address, Nft::Objectreference]]]] $daddr = undef,
+  Optional[Variant[ Stdlib::IP::Address, Nft::Objectreference, Nft::Setreference,
+                    Array[Variant[Stdlib::IP::Address, Nft::Objectreference]]]] $saddr_not = undef,
+  Optional[Variant[ Stdlib::IP::Address, Nft::Objectreference, Nft::Setreference,
+                    Array[Variant[Stdlib::IP::Address, Nft::Objectreference]]]] $daddr_not = undef,
   Optional[Variant[Nft::Port, Nft::Portrange, Array[Variant[Nft::Port, Nft::Portrange], 1]]] $dport = undef,
   Optional[Variant[Nft::Port, Nft::Portrange, Array[Variant[Nft::Port, Nft::Portrange], 1]]] $sport = undef,
   Optional[Variant[String,Array[String, 1]]] $iif = undef,
@@ -139,7 +145,12 @@ define nft::simple(
   }
 
   # Make the nftables rule require all the referenced sets
-  $require_sets = (Array(pick($saddr, []), true) + Array(pick($daddr, []), true)).map |$a| {
+  $require_sets = (
+    Array(pick($saddr, []), true) +
+    Array(pick($daddr, []), true) +
+    Array(pick($saddr_not, []), true) +
+    Array(pick($daddr_not, []), true)
+  ).map |$a| {
     if $a =~ Nft::Setreference {
       $set_name = $a.regsubst(/^@/, '')
       unless Nft::Set[ $set_name ]['type'] in ['ipv4_addr', 'ipv6_addr'] {
@@ -149,31 +160,25 @@ define nft::simple(
     }
   }.delete_undef_values()
 
-  $sip4 = nft::af_filter_address_set_object($saddr, 'v4')
-  $sip6 = nft::af_filter_address_set_object($saddr, 'v6')
-  $ip6_saddr = $sip6.length() ? {
-    0       => undef,
-    1       => "ip6 saddr ${sip6[0]}",
-    default => "ip6 saddr { ${sip6.join(', ')} }",
-  }
-  $ip4_saddr = $sip4.length() ? {
-    0       => undef,
-    1       => "ip saddr ${sip4[0]}",
-    default => "ip saddr { ${sip4.join(', ')} }",
-  }
 
-  $dip4 = nft::af_filter_address_set_object($daddr, 'v4')
-  $dip6 = nft::af_filter_address_set_object($daddr, 'v6')
-  $ip6_daddr = $dip6.length() ? {
-    0       => undef,
-    1       => "ip6 daddr ${dip6[0]}",
-    default => "ip6 daddr { ${dip6.join(', ')} }",
-  }
-  $ip4_daddr = $dip4.length() ? {
-    0       => undef,
-    1       => "ip daddr ${dip4[0]}",
-    default => "ip daddr { ${dip4.join(', ')} }",
-  }
+  [ $addr_4_rules, $addr_6_rules ] =
+  [
+    [ $saddr    , 'saddr' ],
+    [ $saddr_not, 'saddr != ' ],
+    [ $daddr    , 'daddr' ],
+    [ $daddr_not, 'daddr != ' ],
+  ].reduce([[], []]) |$rule46_tuple, $this_instance| {
+    [$addresses, $rule_string] = $this_instance
+    $addresses_4 = nft::af_filter_address_set_object($addresses, 'v4')
+    $addresses_6 = nft::af_filter_address_set_object($addresses, 'v6')
+
+    # lint:ignore:140chars
+    $rule_4 = $addresses_4.length() ? { 0 => undef, 1 => "ip  ${rule_string} ${addresses_4[0]}", default => "ip  ${rule_string} { ${addresses_4.join(', ')} }", }
+    $rule_6 = $addresses_6.length() ? { 0 => undef, 1 => "ip6 ${rule_string} ${addresses_6[0]}", default => "ip6 ${rule_string} { ${addresses_6.join(', ')} }", }
+    # lint:endignore
+
+    [ $rule46_tuple[0] + [$rule_4], $rule46_tuple[1] + [$rule_6] ]
+  }.map |$filter_list| { $filter_list.delete_undef_values() }
 
   $if_rules =
     [ ['iif', $iif],
@@ -195,16 +200,18 @@ define nft::simple(
       }
     }
 
+  # lint:ignore:140chars
   $_rule =
-    if ($ip6_saddr or $ip6_daddr) { [ ($if_rules + $proto_rules + $port_rules + [$ip6_saddr, $ip6_daddr, $counterstring, $action, $commentstring]).delete_undef_values().join(' ') ] }
+    unless $addr_4_rules.empty() { [ ($if_rules + $proto_rules + $port_rules + $addr_4_rules + [$counterstring, $action, $commentstring]).delete_undef_values().join(' ') ] }
     else { [] }
     +
-    if ($ip4_saddr or $ip4_daddr) { [ ($if_rules + $proto_rules + $port_rules + [$ip4_saddr, $ip4_daddr, $counterstring, $action, $commentstring]).delete_undef_values().join(' ') ] }
+    unless $addr_6_rules.empty() { [ ($if_rules + $proto_rules + $port_rules + $addr_6_rules + [$counterstring, $action, $commentstring]).delete_undef_values().join(' ') ] }
     else { [] }
 
   $rule =
     if $_rule.empty() { [ ($if_rules + $proto_rules + $port_rules + [$counterstring, $action, $commentstring]).delete_undef_values().join(' ') ] }
     else { $_rule }
+  # lint:endignore
 
   nft::rule{ "nft::simple:${name}":
     rule        => $rule,
