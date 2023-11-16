@@ -36,14 +36,19 @@ define nft::rule(
   Optional[String]       $description = undef,
   Integer                $order = 200,
 ) {
-  $joined_rule = Array($rule, true).join(";\n")
+  if $rule =~ Array[String,2] {
+    $joined_rule = ['', ($rule + [''])].join(";\n  ")
+  } else {
+    $_element = Array($rule, true)[0]
+    $joined_rule = "${_element}; "
+  }
   nft::fragment { "nft::rule::${name}":
     target  => "050-rules/${af}/${table}/${chain}",
     content => delete_undef_values([
       if $description =~ Undef { "# nrf_nft::rule ${name}" }
         elsif $description != '' { "# ${description}" }
         else { undef },
-      "table ${af} ${table} { chain ${chain} { ${joined_rule}; }; }"
+      "table ${af} ${table} { chain ${chain} { ${joined_rule}}; }"
       ]).join("\n"),
     order   => $order,
   }
