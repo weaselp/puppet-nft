@@ -41,7 +41,9 @@
 # @param oifname      A list of out-interface-names to match;  if not provided, do not match on interface names.
 # @param order        Where to put this rule in the concat file
 # @param counter      Whether to add a counter to this rule
+# @param log rule     Log rule to add before the final action
 # @param action       What to do with matches (accept, drop, ..)
+# @param snat         Address to source nat to (mutually exclusive with other action items)
 #
 # @example
 #   nft::simple { 'allow-web':
@@ -111,8 +113,14 @@ define nft::simple(
   Optional[String]        $description = undef,
   Optional[Integer]       $order = undef,
   Boolean                 $counter = true,
-  String                  $action = 'accept',
+  Optional[Pattern[/\Alog.*\z/]]  $log_rule = undef,
+  Optional[String]                $action = undef,
+  Optional[Variant[Stdlib::IP::Address, Nft::Objectreference]] $snat = undef,
 ) {
+  if [$action, $snat].map |$x| { Integer($x !~ Undef) }.reduce |$memo, $value| { $memo + $value } > 1 {
+    fail("${name}: Cannot have more than one action option (action, snat)")
+  }
+
   if $proto =~ Undef {
     $proto_rules = undef
   } elsif $proto =~ Array {
@@ -180,6 +188,30 @@ define nft::simple(
     [ $rule46_tuple[0] + [$rule_4], $rule46_tuple[1] + [$rule_6] ]
   }.map |$filter_list| { $filter_list.delete_undef_values() }
 
+  if $snat {
+    $snat4 = nft::af_filter_address_set_object($snat, 'v4')
+    $snat6 = nft::af_filter_address_set_object($snat, 'v6')
+    if !$addr_4_rules.empty() and $snat4.empty() {
+      fail('Have v4 rules but snat target no v4 addresses')
+    }
+    if !$addr_6_rules.empty() and $snat6.empty() {
+      fail('Have v6 rules but snat target no v6 addresses')
+    }
+    unless $snat4.empty() or $snat4.length() == 1 {
+      fail("Unexpected length of snat4 target ${snat4}")
+    }
+    unless $snat6.empty() or $snat6.length() == 1 {
+      fail("Unexpected length of snat6 target ${snat6}")
+    }
+
+    $_action4 = unless $snat4.empty() { "snat to ${snat4[0]}" }
+    $_action6 = unless $snat6.empty() { "snat to ${snat6[0]}" }
+  } else {
+    $_action4 = undef
+    $_action6 = undef
+    $_action = pick($action, 'accept')
+  }
+
   $if_rules =
     [ ['iif', $iif],
       ['oif', $oif],
@@ -200,16 +232,19 @@ define nft::simple(
       }
     }
 
+  $do_v4 = !$addr_4_rules.empty() or $_action4
+  $do_v6 = !$addr_6_rules.empty() or $_action6
+
   # lint:ignore:140chars
   $_rule =
-    unless $addr_4_rules.empty() { [ ($if_rules + $proto_rules + $port_rules + $addr_4_rules + [$counterstring, $action, $commentstring]).delete_undef_values().join(' ') ] }
+    if $do_v4 { [ ($if_rules + $proto_rules + $port_rules + $addr_4_rules + [$counterstring, $log_rule, pick($_action4, $_action), $commentstring]).delete_undef_values().join(' ') ] }
     else { [] }
     +
-    unless $addr_6_rules.empty() { [ ($if_rules + $proto_rules + $port_rules + $addr_6_rules + [$counterstring, $action, $commentstring]).delete_undef_values().join(' ') ] }
+    if $do_v6 { [ ($if_rules + $proto_rules + $port_rules + $addr_6_rules + [$counterstring, $log_rule, pick($_action6, $_action), $commentstring]).delete_undef_values().join(' ') ] }
     else { [] }
 
   $rule =
-    if $_rule.empty() { [ ($if_rules + $proto_rules + $port_rules + [$counterstring, $action, $commentstring]).delete_undef_values().join(' ') ] }
+    if $_rule.empty() { [ ($if_rules + $proto_rules + $port_rules + [$counterstring, $log_rule, $_action, $commentstring]).delete_undef_values().join(' ') ] }
     else { $_rule }
   # lint:endignore
 
