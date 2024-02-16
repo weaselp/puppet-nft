@@ -1,5 +1,8 @@
 # A simple rule from IP addresses to a TCP or UDP port
 #
+# This is meant to abstract the most common instances of nftables rules.
+# It will never be a way to do them all, nor is that the intention.
+#
 # @param saddr
 #   A list of source addresses.
 #   If not provided, allow from everywhere, but see the explanation at daddr.
@@ -14,15 +17,20 @@
 #   - If the union of saddr and daddr have both IPv4 and IPv6, then both
 #     are processed, with saddr and daddr filtering based on the given lists,
 #     with an empty list (after AF filtering) meaning everything is allowed.
+# @param saddr_not   A negative list of source addresses
+# @param daddr_not   A negative list of destination addresses
 # @param dport
-#   A target port, list of target ports, or a range (as string) from-to target port.
+#   A target port (port number or service name from /etc/services),
+#   A range of ports ("<number>-<number>" as string),
+#   or a list of these.
 #   If not provided, do not match on ports
 # @param sport
-#   A sourceport port, list of target ports, or a range (as string) from-to source port.
+#   Source ports in the same way as dport.
 # @param proto
 #   Whether this is TCP or UDP or something else (given protocol number).
 #   Providing sport and dport may or may not make sense for a given protocol.
 #   Defaults to 'tcp' if ports are given, none otherwise.
+#   Using a set (i.e. list of ['tcp', 'udp']) is also possible.
 # @param chain        The name of the chain
 # @param af           Address family (inet, ip, ip6, etc)
 # @param table        The name of the table
@@ -33,53 +41,116 @@
 # @param oifname      A list of out-interface-names to match;  if not provided, do not match on interface names.
 # @param order        Where to put this rule in the concat file
 # @param counter      Whether to add a counter to this rule
+# @param log rule     Log rule to add before the final action
 # @param action       What to do with matches (accept, drop, ..)
+# @param snat         Address to source nat to (mutually exclusive with other action items)
 #
 # @example
+#   nft::simple { 'allow-web':
+#     dport   => [80, 443],
+#   }
+# @example
+#   nft::simple { 'allow-ssh':
+#     dport   => 22,
+#     iifname => 'mgmt',
+#   }
+# @example allow-ssh
+#   nft::simple { 'allow-ssh':
+#     iifname => 'mgmt',
+#     dport   => 22,
+#     saddr   => ['10.0.0.0/8', '172.16.0.0/12'],
+#   }
+# @example from networks
 #    nft::simple{ 'allow-mta-submission':
 #      saddr => $my_networks,
 #      dport => 587,
 #    }
-#
-# @example
+# @example in a different chain
 #    nft::simple{ "allow-extra-ssh":
 #      chain => 'ssh-filter',
 #      saddr => $src_address,
 #    }
-#
+# @example allow-dns
+#   nft::simple { 'allow-dns':
+#     dport   => 'domain',
+#     proto   => ['tcp', 'udp'],
+#   }
+# @example
+#   nft::simple { 'from-guest-wifi':
+#     iifname => 'wlan0',
+#     action  => 'jump from-guests',
+#   }
+# @example # do not track the incoming traffic
+#   nft::simple { "prerouting-notrack-${title}-${proto}":
+#     chain   => 'prerouting',
+#     iifname => $interface,
+#     proto   => $proto,
+#     dport   => $incoming_dport,
+#     sport   => $incoming_sport,
+#     action  => 'notrack',
+#   }
+# @example nat
+#   nft::chain { 'prerouting':
+#     table => 'nat',
+#   }
+#   nft::simple { 'redirect-incoming-gerrit-ssh':
+#     chain  => 'prerouting',
+#     table  => 'nat',
+#     daddr  => $gerrit_service_ip,
+#     dport  => 22,
+#     action => "redirect to :${gerrit_ssh_port}",
+#   }
 define nft::simple(
-  Optional[Variant[Stdlib::IP::Address, Array[Stdlib::IP::Address]]] $saddr = undef,
-  Optional[Variant[Stdlib::IP::Address, Array[Stdlib::IP::Address]]] $daddr = undef,
-  Optional[Variant[Stdlib::Port,Array[Variant[Stdlib::Port,Pattern[/\A[0-9]+-[0-9]+\z/]],1],Pattern[/\A[0-9]+-[0-9]+\z/]]] $dport = undef,
-  Optional[Variant[Stdlib::Port,Array[Variant[Stdlib::Port,Pattern[/\A[0-9]+-[0-9]+\z/]],1],Pattern[/\A[0-9]+-[0-9]+\z/]]] $sport = undef,
+  Optional[Variant[ Stdlib::IP::Address, Nft::Objectreference, Nft::Setreference,
+                    Array[Variant[Stdlib::IP::Address, Nft::Objectreference]]]] $saddr = undef,
+  Optional[Variant[ Stdlib::IP::Address, Nft::Objectreference, Nft::Setreference,
+                    Array[Variant[Stdlib::IP::Address, Nft::Objectreference]]]] $daddr = undef,
+  Optional[Variant[ Stdlib::IP::Address, Nft::Objectreference, Nft::Setreference,
+                    Array[Variant[Stdlib::IP::Address, Nft::Objectreference]]]] $saddr_not = undef,
+  Optional[Variant[ Stdlib::IP::Address, Nft::Objectreference, Nft::Setreference,
+                    Array[Variant[Stdlib::IP::Address, Nft::Objectreference]]]] $daddr_not = undef,
+  Optional[Variant[Nft::Port, Nft::Portrange, Array[Variant[Nft::Port, Nft::Portrange], 1]]] $dport = undef,
+  Optional[Variant[Nft::Port, Nft::Portrange, Array[Variant[Nft::Port, Nft::Portrange], 1]]] $sport = undef,
   Optional[Variant[String,Array[String, 1]]] $iif = undef,
   Optional[Variant[String,Array[String, 1]]] $oif = undef,
   Optional[Variant[String,Array[String, 1]]] $iifname = undef,
   Optional[Variant[String,Array[String, 1]]] $oifname = undef,
-  Optional[Variant[Enum['tcp', 'udp'], Integer]] $proto = if ($sport !~ Undef or $dport !~ Undef) { 'tcp' } else { undef },
+  Optional[Variant[Enum['tcp', 'udp'], Integer, Array[Enum['tcp', 'udp']]]]
+    $proto = if ($sport !~ Undef or $dport !~ Undef) { 'tcp' } else { undef },
   Nft::String         $chain = 'input',
   Nft::AddressFamily  $af = 'inet',
   Nft::String         $table = 'filter',
   Optional[String]        $description = undef,
   Optional[Integer]       $order = undef,
   Boolean                 $counter = true,
-  String                  $action = 'accept',
+  Optional[Pattern[/\Alog.*\z/]]  $log_rule = undef,
+  Optional[String]                $action = undef,
+  Optional[Variant[Stdlib::IP::Address, Nft::Objectreference]] $snat = undef,
 ) {
-  $proto_rules = if $proto !~ Undef { ["meta l4proto ${proto}"] } else {}
+  if [$action, $snat].map |$x| { Integer($x !~ Undef) }.reduce |$memo, $value| { $memo + $value } > 1 {
+    fail("${name}: Cannot have more than one action option (action, snat)")
+  }
+
+  if $proto =~ Undef {
+    $proto_rules = undef
+  } elsif $proto =~ Array {
+    $proto_rules = ["meta l4proto { ${proto.join(', ')} }"]
+  } else {
+    $proto_rules = ["meta l4proto ${proto}"]
+  }
 
   $port_rules =
     [ ['dport', $dport],
       ['sport', $sport],
     ].map |$tuple| {
       [$port_type, $port_spec] = $tuple
+      $_proto = if $proto =~ Array { 'th' } else { $proto }
       if $port_spec =~ Undef {
         undef
-      } elsif $port_spec =~ Stdlib::Port {
-        "${proto} ${port_type} ${port_spec}"
-      } elsif $port_spec =~ String {
-        "${proto} ${port_type} ${port_spec}"
+      } elsif $port_spec =~ Array {
+        "${_proto} ${port_type} { ${port_spec.join(', ')} }"
       } else {
-        "${proto} ${port_type} { ${port_spec.join(', ')} }"
+        "${_proto} ${port_type} ${port_spec}"
       }
     }
 
@@ -91,30 +162,64 @@ define nft::simple(
     $commentstring = "comment \"${name}\""
   }
 
-  $sip4 = Array(pick($saddr, []), true).filter |$a| { $a !~ Stdlib::IP::Address::V6 }
-  $sip6 = Array(pick($saddr, []), true).filter |$a| { $a =~ Stdlib::IP::Address::V6 }
-  $ip6_saddr = $sip6.length() ? {
-    0       => undef,
-    1       => "ip6 saddr ${sip6[0]}",
-    default => "ip6 saddr { ${sip6.join(', ')} }",
-  }
-  $ip4_saddr = $sip4.length() ? {
-    0       => undef,
-    1       => "ip saddr ${sip4[0]}",
-    default => "ip saddr { ${sip4.join(', ')} }",
-  }
+  # Make the nftables rule require all the referenced sets
+  $require_sets = (
+    Array(pick($saddr, []), true) +
+    Array(pick($daddr, []), true) +
+    Array(pick($saddr_not, []), true) +
+    Array(pick($daddr_not, []), true)
+  ).map |$a| {
+    if $a =~ Nft::Setreference {
+      $set_name = $a.regsubst(/^@/, '')
+      unless Nft::Set[ $set_name ]['type'] in ['ipv4_addr', 'ipv6_addr'] {
+        fail("Named set ${set_name} is not an address type but ${Nft::Set[ $set_name ]['type']}.")
+      }
+      Nft::Set[ $set_name ]
+    }
+  }.delete_undef_values()
 
-  $dip4 = Array(pick($daddr, []), true).filter |$a| { $a !~ Stdlib::IP::Address::V6 }
-  $dip6 = Array(pick($daddr, []), true).filter |$a| { $a =~ Stdlib::IP::Address::V6 }
-  $ip6_daddr = $dip6.length() ? {
-    0       => undef,
-    1       => "ip6 daddr ${dip6[0]}",
-    default => "ip6 daddr { ${dip6.join(', ')} }",
-  }
-  $ip4_daddr = $dip4.length() ? {
-    0       => undef,
-    1       => "ip daddr ${dip4[0]}",
-    default => "ip daddr { ${dip4.join(', ')} }",
+
+  [ $addr_4_rules, $addr_6_rules ] =
+  [
+    [ $saddr    , 'saddr' ],
+    [ $saddr_not, 'saddr != ' ],
+    [ $daddr    , 'daddr' ],
+    [ $daddr_not, 'daddr != ' ],
+  ].reduce([[], []]) |$rule46_tuple, $this_instance| {
+    [$addresses, $rule_string] = $this_instance
+    $addresses_4 = nft::af_filter_address_set_object($addresses, 'v4')
+    $addresses_6 = nft::af_filter_address_set_object($addresses, 'v6')
+
+    # lint:ignore:140chars
+    $rule_4 = $addresses_4.length() ? { 0 => undef, 1 => "ip  ${rule_string} ${addresses_4[0]}", default => "ip  ${rule_string} { ${addresses_4.join(', ')} }", }
+    $rule_6 = $addresses_6.length() ? { 0 => undef, 1 => "ip6 ${rule_string} ${addresses_6[0]}", default => "ip6 ${rule_string} { ${addresses_6.join(', ')} }", }
+    # lint:endignore
+
+    [ $rule46_tuple[0] + [$rule_4], $rule46_tuple[1] + [$rule_6] ]
+  }.map |$filter_list| { $filter_list.delete_undef_values() }
+
+  if $snat {
+    $snat4 = nft::af_filter_address_set_object($snat, 'v4')
+    $snat6 = nft::af_filter_address_set_object($snat, 'v6')
+    if !$addr_4_rules.empty() and $snat4.empty() {
+      fail('Have v4 rules but snat target no v4 addresses')
+    }
+    if !$addr_6_rules.empty() and $snat6.empty() {
+      fail('Have v6 rules but snat target no v6 addresses')
+    }
+    unless $snat4.empty() or $snat4.length() == 1 {
+      fail("Unexpected length of snat4 target ${snat4}")
+    }
+    unless $snat6.empty() or $snat6.length() == 1 {
+      fail("Unexpected length of snat6 target ${snat6}")
+    }
+
+    $_action4 = unless $snat4.empty() { "snat to ${snat4[0]}" }
+    $_action6 = unless $snat6.empty() { "snat to ${snat6[0]}" }
+  } else {
+    $_action4 = undef
+    $_action6 = undef
+    $_action = pick($action, 'accept')
   }
 
   $if_rules =
@@ -137,16 +242,21 @@ define nft::simple(
       }
     }
 
+  $do_v4 = !$addr_4_rules.empty() or $_action4
+  $do_v6 = !$addr_6_rules.empty() or $_action6
+
+  # lint:ignore:140chars
   $_rule =
-    if ($ip6_saddr or $ip6_daddr) { [ ($if_rules + $proto_rules + $port_rules + [$ip6_saddr, $ip6_daddr, $counterstring, $action, $commentstring]).delete_undef_values().join(' ') ] }
+    if $do_v4 { [ ($if_rules + $proto_rules + $port_rules + $addr_4_rules + [$counterstring, $log_rule, pick($_action4, $_action), $commentstring]).delete_undef_values().join(' ') ] }
     else { [] }
     +
-    if ($ip4_saddr or $ip4_daddr) { [ ($if_rules + $proto_rules + $port_rules + [$ip4_saddr, $ip4_daddr, $counterstring, $action, $commentstring]).delete_undef_values().join(' ') ] }
+    if $do_v6 { [ ($if_rules + $proto_rules + $port_rules + $addr_6_rules + [$counterstring, $log_rule, pick($_action6, $_action), $commentstring]).delete_undef_values().join(' ') ] }
     else { [] }
 
   $rule =
-    if $_rule.empty() { [ ($if_rules + $proto_rules + $port_rules + [$counterstring, $action, $commentstring]).delete_undef_values().join(' ') ] }
+    if $_rule.empty() { [ ($if_rules + $proto_rules + $port_rules + [$counterstring, $log_rule, $_action, $commentstring]).delete_undef_values().join(' ') ] }
     else { $_rule }
+  # lint:endignore
 
   nft::rule{ "nft::simple:${name}":
     rule        => $rule,
@@ -155,5 +265,6 @@ define nft::simple(
     table       => $table,
     description => $description,
     order       => $order,
+    require     => $require_sets,
   }
 }
