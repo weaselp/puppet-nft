@@ -41,7 +41,7 @@
 # @param oifname      A list of out-interface-names to match;  if not provided, do not match on interface names.
 # @param order        Where to put this rule in the concat file
 # @param counter      Whether to add a counter to this rule
-# @param log rule     Log rule to add before the final action
+# @param log_rule     Log rule to add before the final action
 # @param action       What to do with matches (accept, drop, ..)
 # @param snat         Address to source nat to (mutually exclusive with other action items)
 #
