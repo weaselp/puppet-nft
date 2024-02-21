@@ -216,6 +216,7 @@ define nft::simple(
 
     $_action4 = unless $snat4.empty() { "snat to ${snat4[0]}" }
     $_action6 = unless $snat6.empty() { "snat to ${snat6[0]}" }
+    $_action = false
   } else {
     $_action4 = undef
     $_action6 = undef
