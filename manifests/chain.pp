@@ -65,6 +65,8 @@ define nft::chain(
     nft::rule{ "chain-${chain}-initrules":
       rule  => $rules.join(";\n  "),
       chain => $chain,
+      table => $table,
+      af    => $af,
       order => $rules_order,
     }
   }

@@ -3,11 +3,9 @@
 # This is a module internal type, you should never need to use it from outside.
 #
 # @param filename  Base name of the file (without path or extension)
-# @param content   Content to start the file with
 # @param extension String to append to the filename
 define nft::file(
   String $filename = regsubst($name, '[^a-zA-Z0-9.,_=-]', '_' ,'G'),
-  Optional[String] $content = undef,
   String $extension = '.nft',
 ) {
   include nft
@@ -22,10 +20,7 @@ define nft::file(
     group          => 'root',
     ensure_newline => true,
     order          => 'numeric',
-    warn           => @("EOF"),
-      # This file is managed by Puppet.  Do not edit it here.
-      ${content}
-      | EOF
+    warn           => true,
   }
   ~> Exec['nft check']
   -> file { $filename_prod:
