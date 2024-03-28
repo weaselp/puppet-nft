@@ -23,7 +23,7 @@ define nft::set(
   } else {
     $_flags = ['flags', $flags.join(', '), ';'].join(' ')
   }
-  $target = "015-sets/${af}/${table}"
+  $target = "005-sets/${af}/${table}"
   $content = "table ${af} ${table} { set ${setname} { type ${type}; ${_flags} }; }"
 
   ensure_resource('nft::file', $target, { })
