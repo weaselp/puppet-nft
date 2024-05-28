@@ -20,6 +20,10 @@
 # @param have_ipv6  Is an object that includes ipv6 elements directly or via referenced objects
 #   Just like have_ipv4, this must be set by the caller and for the same reasons.
 #
+# @param include_level
+#   How many levels deep this object includes other objects.  Relevant for nft
+#   file ordering.
+#
 # Example:
 #   nft::object_impl{ 'SIMPLE_SET':
 #     ipv4_elements => [ '192.168.1.1', '192.168.1.2' ],
@@ -27,6 +31,7 @@
 define nft::object_impl(
   Boolean $have_ipv4,
   Boolean $have_ipv6,
+  Integer $include_level,
 
   Nft::Objectdefine $object_name = $name,
   Array[Stdlib::IP::Address::V4] $ipv4_elements = [],
@@ -78,6 +83,7 @@ define nft::object_impl(
   nft::fragment { "chains/${object_name}":
     target  => $_target,
     content => $contents.join("\n"),
+    order   => 50 + $include_level,
   }
 }
 

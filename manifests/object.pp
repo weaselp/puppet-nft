@@ -33,19 +33,18 @@ define nft::object(
   $_obj_af_info = Hash($_object_refs.map |$o| {
     $object_name = $o.regsubst(/^\$/, '')
     $object = Nft::Object_impl[$object_name]
-    $has_v4 = $object['have_ipv4']
-    $has_v6 = $object['have_ipv6']
-    warning("CNVA Referenced object ${object_name}: ${object}: v4/v6: ${has_v4}/${has_v6}")
     [ $object_name,
       {
-        has_v4 => $object['have_ipv4'],
-        has_v6 => $object['have_ipv6'],
+        has_v4        => $object['have_ipv4'],
+        has_v6        => $object['have_ipv6'],
+        include_level => $object['include_level'],
       }
     ]
   })
   $_objects_v4       = $_obj_af_info.filter |$object_name, $object_info| { $object_info['has_v4'] }
   $_objects_v6       = $_obj_af_info.filter |$object_name, $object_info| { $object_info['has_v6'] }
   $_objects_non_addr = $_obj_af_info.filter |$object_name, $object_info| { !$object_info['has_v4'] and !$object_info['has_v6'] }
+  $_include_level    = ([0] + $_obj_af_info.map |$object_name, $object_info| { $object_info['include_level'] + 1 }).max
 
   # Figure out our address family
   $have_ipv4 = $_ip4.length() > 0 or $_objects_v4.length() > 0
@@ -63,5 +62,7 @@ define nft::object(
 
     have_ipv4         => $_ip4.length() > 0 or $_objects_v4.length() > 0,
     have_ipv6         => $_ip6.length() > 0 or $_objects_v6.length() > 0,
+
+    include_level     => $_include_level,
   }
 }
