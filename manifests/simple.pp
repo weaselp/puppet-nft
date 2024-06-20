@@ -157,9 +157,14 @@ define nft::simple(
   $counterstring = [undef, 'counter'][Integer($counter)]
   if $description {
     $_description = $description.regsubst(/"/, '', 'G')
-    $commentstring = "comment \"${_description} (${name})\""
+    $comment_info = "${_description} (${name})"
   } else {
-    $commentstring = "comment \"${name}\""
+    $comment_info = $name.regsubst(/"/, '', 'G')
+  }
+  if $comment_info.length > 127 {
+    $commentstring = "comment \"${comment_info[0, 124]}..\""
+  } else {
+    $commentstring = "comment \"${comment_info}\""
   }
 
   # Make the nftables rule require all the referenced sets
