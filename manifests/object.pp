@@ -31,9 +31,9 @@ define nft::object(
   # Figure out address family of included objects
   $_object_refs = $elements.filter |$a| { $a =~ Nft::Objectreference }
   $_obj_af_info = Hash($_object_refs.map |$o| {
-    $object_name = $o.regsubst(/^\$/, '')
-    $object = Nft::Object_impl[$object_name]
-    [ $object_name,
+    $object_ref_name = $o.regsubst(/^\$/, '')
+    $object = Nft::Object_impl[$object_ref_name]
+    [ $object_ref_name,
       {
         has_v4        => $object['have_ipv4'],
         has_v6        => $object['have_ipv6'],
