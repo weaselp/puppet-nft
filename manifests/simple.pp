@@ -207,10 +207,10 @@ define nft::simple(
     $snat4 = nft::af_filter_address_set_object($snat, 'v4')
     $snat6 = nft::af_filter_address_set_object($snat, 'v6')
     if !$addr_4_rules.empty() and $snat4.empty() {
-      fail('Have v4 rules but snat target no v4 addresses')
+      fail("Have v4 rules but snat target no v4 addresses (v4 rules: ${addr_4_rules}")
     }
     if !$addr_6_rules.empty() and $snat6.empty() {
-      fail('Have v6 rules but snat target no v6 addresses')
+      fail("Have v6 rules but snat target no v6 addresses (v6 rules: ${addr_6_rules}")
     }
     unless $snat4.empty() or $snat4.length() == 1 {
       fail("Unexpected length of snat4 target ${snat4}")
