@@ -29,7 +29,7 @@
 #     chain => 'services_tcp',
 #   }
 #
-define nft::rule(
+define nft::rule (
   Variant[String,Array[String]] $rule = $name,
   Nft::String        $chain = 'input',
   Nft::AddressFamily $af = 'inet',
@@ -43,7 +43,7 @@ define nft::rule(
     $_element = Array($rule, true)[0]
     $joined_rule = "${_element}; "
   }
-  nft::fragment { "nft::rule::${name}":
+  nft::fragment { $name:
     target  => "050-rules/${af}/${table}/${chain}",
     content => delete_undef_values([
       if $description =~ Undef { "# nrf_nft::rule ${name}" }

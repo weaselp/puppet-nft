@@ -100,7 +100,7 @@
 #     dport  => 22,
 #     action => "redirect to :${gerrit_ssh_port}",
 #   }
-define nft::simple(
+define nft::simple (
   Optional[Variant[ Stdlib::IP::Address, Nft::Objectreference, Nft::Setreference,
                     Array[Variant[Stdlib::IP::Address, Nft::Objectreference]]]] $saddr = undef,
   Optional[Variant[ Stdlib::IP::Address, Nft::Objectreference, Nft::Setreference,
@@ -264,7 +264,7 @@ define nft::simple(
     else { $_rule }
   # lint:endignore
 
-  nft::rule{ "nft::simple:${name}":
+  nft::rule { $name:
     rule        => $rule,
     chain       => $chain,
     af          => $af,
