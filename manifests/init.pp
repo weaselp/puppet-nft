@@ -9,11 +9,17 @@
 # @param main_test Staging config file that sources everything else
 # @param main_prod Production config file that sources everything else
 #
-# @param flush_ruleset
-#   Whether to flush the ruleset at the start, or which tables to flush.
+# @param preamble
+#   If true, flush all the rulesets at the start.
+#   If a string, add this to the nftables config file.
+#   If false, don't add anything.
+#
 #   In general, this probably always wants to be true.  However, if you manage
 #   for instance the inet table with this module and say the ip table by some
-#   other means, this can be set to just 'inet'.
+#   other means, this can be set to just 'flush ruleset inet'.  Another example
+#   is to just say "flush table inet filter\nflush table inet nat" to keep any
+#   existing dynamic sets populated.
+#
 #
 # @param service_enable  enable the nftables service
 # @param service_ensure  whether to have the service running or stopped
@@ -27,7 +33,7 @@ class nft(
     'RedHat' => '/etc/sysconfig/nftables.conf',
     default  => '/etc/nftables.conf',
   },
-  Variant[Boolean, String] $flush_ruleset = true,
+  Variant[Boolean, String] $preamble = true,
 
   Boolean $service_enable = true,
   Enum['running', 'stopped'] $service_ensure = if ($service_enable) { 'running' } else { 'stopped' },
@@ -43,9 +49,9 @@ class nft(
     }
   }
 
-  if $flush_ruleset =~ String {
-    $_preamble = "flush ruleset ${flush_ruleset}"
-  } elsif $flush_ruleset {
+  if $preamble =~ String {
+    $_preamble = $preamble
+  } elsif $preamble {
     $_preamble = 'flush ruleset'
   } else {
     $_preamble = ''
