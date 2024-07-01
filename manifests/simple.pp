@@ -15,10 +15,16 @@
 #   - If saddr and/or daddr only have addresses of one address family, then
 #     only that address family is allowed.
 #   - If the union of saddr and daddr have both IPv4 and IPv6, then both
-#     are processed, with saddr and daddr filtering based on the given lists,
-#     with an empty list (after AF filtering) meaning everything is allowed.
-# @param saddr_not   A negative list of source addresses
-# @param daddr_not   A negative list of destination addresses
+#     are processed, with saddr and daddr filtering based on the given lists.
+#     If a list is empty after AF filtering, then for saddr and daddr no
+#     rule will be created (as the empty list will not match).  For saddr_not
+#     and daddr_not, a rule without saddr/daddr restriction will be created
+#     for that address family.
+#     .
+#     An exception concerns sets.  As only one address family can be in a set,
+#     we only create rules for that address family.
+# @param saddr_not   A negative list of source addresses; see note at daddr.
+# @param daddr_not   A negative list of destination addresses; see note at daddr.
 # @param dport
 #   A target port (port number or service name from /etc/services),
 #   A range of ports ("<number>-<number>" as string),
@@ -130,6 +136,12 @@ define nft::simple (
   if [$action, $snat].map |$x| { Integer($x !~ Undef) }.reduce |$memo, $value| { $memo + $value } > 1 {
     fail("${name}: Cannot have more than one action option (action, snat)")
   }
+  if $saddr !~ Undef and $saddr_not !~ Undef {
+    fail('Cannot set both saddr and saddr_not')
+  }
+  if $daddr !~ Undef and $daddr_not !~ Undef {
+    fail('Cannot set both daddr and daddr_not')
+  }
 
   if $proto =~ Undef {
     $proto_rules = undef
@@ -183,34 +195,56 @@ define nft::simple (
     }
   }.delete_undef_values()
 
-
-  [ $addr_4_rules, $addr_6_rules ] =
+  # collect the address matching rule snippets.
+  # .
+  # if saddr or daddr is defined but empty (after address familiy filtering), we
+  # do not want a rule at all (as no packet can match the empty list).
+  # .
+  # for saddr_not and daddr_not, an empty list is fine and we do not create a
+  # limitation based on [sd]addr.
+  [ $addr_4_rules, $addr_create_4_rule, $addr_6_rules, $addr_create_6_rule ] =
   [
-    [ $saddr    , 'saddr' ],
-    [ $saddr_not, 'saddr != ' ],
-    [ $daddr    , 'daddr' ],
-    [ $daddr_not, 'daddr != ' ],
-  ].reduce([[], []]) |$rule46_tuple, $this_instance| {
-    [$addresses, $rule_string] = $this_instance
-    $addresses_4 = nft::af_filter_address_set_object($addresses, 'v4')
-    $addresses_6 = nft::af_filter_address_set_object($addresses, 'v6')
+    [ $saddr    , 'saddr'     , true],
+    [ $saddr_not, 'saddr != ' , false ],
+    [ $daddr    , 'daddr'     , true ],
+    [ $daddr_not, 'daddr != ' , false ],
+  ].reduce([[], true, [], true]) |$rule46_tuple, $this_instance| {
+    [$addresses, $rule_string, $rule_is_positive] = $this_instance
+    if $addresses =~ Undef {
+      $rule_4 = undef
+      $rule_6 = undef
+      $rule_4_create = true
+      $rule_6_create = true
+    } else {
+      $addresses_4 = nft::af_filter_address_set_object($addresses, 'v4')
+      $addresses_6 = nft::af_filter_address_set_object($addresses, 'v6')
 
-    # lint:ignore:140chars
-    $rule_4 = $addresses_4.length() ? { 0 => undef, 1 => "ip  ${rule_string} ${addresses_4[0]}", default => "ip  ${rule_string} { ${addresses_4.join(', ')} }", }
-    $rule_6 = $addresses_6.length() ? { 0 => undef, 1 => "ip6 ${rule_string} ${addresses_6[0]}", default => "ip6 ${rule_string} { ${addresses_6.join(', ')} }", }
-    # lint:endignore
+      # on a positive rule, an empty list will never match, so do not create the rule for positive rules
+      $rule_4_create = $addresses_4.length() > 0 or (!$rule_is_positive and $addresses !~ Nft::Setreference)
+      $rule_6_create = $addresses_6.length() > 0 or (!$rule_is_positive and $addresses !~ Nft::Setreference)
 
-    [ $rule46_tuple[0] + [$rule_4], $rule46_tuple[1] + [$rule_6] ]
-  }.map |$filter_list| { $filter_list.delete_undef_values() }
+      # lint:ignore:140chars
+      $rule_4 = $addresses_4.length() ? { 0 => if !$rule_is_positive { 'meta nfproto ipv4' }, 1 => "ip  ${rule_string} ${addresses_4[0]}", default => "ip  ${rule_string} { ${addresses_4.join(', ')} }", }
+      $rule_6 = $addresses_6.length() ? { 0 => if !$rule_is_positive { 'meta nfproto ipv6' }, 1 => "ip6 ${rule_string} ${addresses_6[0]}", default => "ip6 ${rule_string} { ${addresses_6.join(', ')} }", }
+      # lint:endignore
+    }
+
+    [
+      $rule46_tuple[0] + [$rule_4],
+      $rule46_tuple[1] and $rule_4_create,
+      $rule46_tuple[2] + [$rule_6],
+      $rule46_tuple[3] and $rule_6_create,
+    ]
+  }.map |$filter_list| { if $filter_list =~ Array { $filter_list.delete_undef_values() } else { $filter_list } }
 
   if $snat {
     $snat4 = nft::af_filter_address_set_object($snat, 'v4')
     $snat6 = nft::af_filter_address_set_object($snat, 'v6')
-    if !$addr_4_rules.empty() and $snat4.empty() {
-      fail("Have v4 rules but snat target no v4 addresses (v4 rules: ${addr_4_rules}")
+    if !$addr_4_rules.empty() and $addr_create_4_rule and $snat4.empty() {
+      fail("Have v4 rules but snat target has no v4 addresses (v4 rules: ${addr_4_rules}")
     }
-    if !$addr_6_rules.empty() and $snat6.empty() {
-      fail("Have v6 rules but snat target no v6 addresses (v6 rules: ${addr_6_rules}")
+    if !$addr_6_rules.empty() and $addr_create_6_rule and $snat6.empty() {
+      fail("Have v6 rules but snat target has no v6 addresses (v6 rules: ${addr_6_rules}")
     }
     unless $snat4.empty() or $snat4.length() == 1 {
       fail("Unexpected length of snat4 target ${snat4}")
@@ -248,29 +282,34 @@ define nft::simple (
       }
     }
 
-  $do_v4 = !$addr_4_rules.empty() or $_action4
-  $do_v6 = !$addr_6_rules.empty() or $_action6
+  $do_v4 = (!$addr_4_rules.empty() or $_action4) and $addr_create_4_rule
+  $do_v6 = (!$addr_6_rules.empty() or $_action6) and $addr_create_6_rule
 
   # lint:ignore:140chars
   $_rule =
-    if $do_v4 { [ ($if_rules + $proto_rules + $port_rules + $addr_4_rules + [$counterstring, $log_rule, pick($_action4, $_action), $commentstring]).delete_undef_values().join(' ') ] }
-    else { [] }
+    if $do_v4 {
+      [ ($if_rules + $proto_rules + $port_rules + $addr_4_rules + [$counterstring, $log_rule, pick($_action4, $_action), $commentstring]).delete_undef_values().join(' ') ]
+    } else { [] }
     +
-    if $do_v6 { [ ($if_rules + $proto_rules + $port_rules + $addr_6_rules + [$counterstring, $log_rule, pick($_action6, $_action), $commentstring]).delete_undef_values().join(' ') ] }
-    else { [] }
+    if $do_v6 {
+      [ ($if_rules + $proto_rules + $port_rules + $addr_6_rules + [$counterstring, $log_rule, pick($_action6, $_action), $commentstring]).delete_undef_values().join(' ') ]
+    } else { [] }
 
   $rule =
-    if $_rule.empty() { [ ($if_rules + $proto_rules + $port_rules + [$counterstring, $log_rule, $_action, $commentstring]).delete_undef_values().join(' ') ] }
-    else { $_rule }
+    if $_rule.empty() and $addr_create_4_rule and $addr_create_6_rule {
+      [ ($if_rules + $proto_rules + $port_rules + [$counterstring, $log_rule, $_action, $commentstring]).delete_undef_values().join(' ') ]
+    } else { $_rule }
   # lint:endignore
 
-  nft::rule { $name:
-    rule        => $rule,
-    chain       => $chain,
-    af          => $af,
-    table       => $table,
-    description => $description,
-    order       => $order,
-    require     => $require_sets,
+  if $rule.length > 0 {
+    nft::rule { $name:
+      rule        => $rule,
+      chain       => $chain,
+      af          => $af,
+      table       => $table,
+      description => $description,
+      order       => $order,
+      require     => $require_sets,
+    }
   }
 }
