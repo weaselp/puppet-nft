@@ -121,7 +121,11 @@ define nft::simple (
   Optional[Variant[String,Array[String, 1]]] $oif = undef,
   Optional[Variant[String,Array[String, 1]]] $iifname = undef,
   Optional[Variant[String,Array[String, 1]]] $oifname = undef,
-  Optional[Variant[Enum['tcp', 'udp'], Integer, Array[Enum['tcp', 'udp']]]]
+  Optional[Variant[
+    Enum['tcp', 'udp', 'icmp', 'icmpv6'],
+    Integer,
+    Array[Enum['tcp', 'udp', 'icmp', 'icmpv6']],
+    ]]
     $proto = if ($sport !~ Undef or $dport !~ Undef) { 'tcp' } else { undef },
   Nft::String         $chain = 'input',
   Nft::AddressFamily  $af = 'inet',
