@@ -39,6 +39,9 @@ function nft::af_filter_address_set_object(
     } elsif $a =~ Nft::Objectreference {
       $object_name = $a.regsubst(/^\$/, '')
       $object = Nft::Object_impl[$object_name]
+      unless $object['have_ipv4'] or $object['have_ipv6'] {
+        fail("Referenced object ${object_name} is not an address object")
+      }
       case $test_target {
         'v4': { if $object['have_ipv4'] { "\$__4_${object_name}" } }
         'v6': { if $object['have_ipv6'] { "\$__6_${object_name}" } }
