@@ -3,7 +3,7 @@
 require 'spec_helper'
 
 describe 'nft::file' do
-  let(:title) { 'namevar' }
+  let(:title) { 'eve' }
   let(:params) do
     {}
   end
@@ -13,6 +13,9 @@ describe 'nft::file' do
       let(:facts) { os_facts }
 
       it { is_expected.to compile }
+
+      it { is_expected.to contain_concat('nft::file::eve') }
+      it { is_expected.to contain_file('/etc/nftables/eve.nft') }
     end
   end
 end

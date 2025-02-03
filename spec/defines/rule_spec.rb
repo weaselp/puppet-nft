@@ -3,7 +3,7 @@
 require 'spec_helper'
 
 describe 'nft::rule' do
-  let(:title) { 'namevar' }
+  let(:title) { 'bob' }
   let(:params) do
     {}
   end
@@ -13,6 +13,8 @@ describe 'nft::rule' do
       let(:facts) { os_facts }
 
       it { is_expected.to compile }
+      it { is_expected.to contain_nft__fragment('bob') }
+      it { is_expected.to contain_concat__fragment('nft::fragment::bob') }
     end
   end
 end

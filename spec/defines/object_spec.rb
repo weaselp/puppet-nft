@@ -3,9 +3,11 @@
 require 'spec_helper'
 
 describe 'nft::object' do
-  let(:title) { 'namevar' }
+  let(:title) { 'NFT_OBJECT' }
   let(:params) do
-    {}
+    {
+      'elements' => ['192.0.2.1'],
+    }
   end
 
   on_supported_os.each do |os, os_facts|
