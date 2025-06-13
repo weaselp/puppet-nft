@@ -7,7 +7,7 @@
 # @param source   Source to pass to concat::fragment
 # @param content  Content to pass to concat::fragment
 # @param order    Order to pass to concat::fragment
-define nft::fragment(
+define nft::fragment (
   String $target,
   Optional[String] $source = undef,
   Optional[String] $content = undef,

@@ -23,7 +23,7 @@
 #
 # @param service_enable  enable the nftables service
 # @param service_ensure  whether to have the service running or stopped
-class nft(
+class nft (
   Stdlib::AbsolutePath $dir_test = '/etc/.nftables-staging',
   Stdlib::AbsolutePath $dir_prod = '/etc/nftables',
 
@@ -43,7 +43,7 @@ class nft(
   }
 
   if $facts['os']['family'] == 'RedHat' {
-    service{'firewalld':
+    service { 'firewalld':
       ensure => 'stopped',
       enable => false,
     }
@@ -85,16 +85,19 @@ class nft(
     mode    => '0444',
     owner   => 'root',
     group   => 'root',
+    # lint:ignore:strict_indent
     content => @("EOF"),
       ${_preamble}
       include "${nft::dir_test}/*.nft"
       | EOF
+    # lint:endignore
   }
   ~> Exec['nft check']
   -> file { $nft::main_prod:
     mode    => '0544',
     owner   => 'root',
     group   => 'root',
+    # lint:ignore:strict_indent
     content => @("EOF"),
       #!/usr/sbin/nft -f
       # This file is managed by Puppet.  Do not edit it here.
@@ -102,6 +105,7 @@ class nft(
       ${_preamble}
       include "${nft::dir_prod}/*.nft"
       | EOF
+    # lint:endignore
   }
   ~> Service['nftables']
 }

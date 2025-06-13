@@ -4,7 +4,7 @@
 #
 # @param filename  Base name of the file (without path or extension)
 # @param extension String to append to the filename
-define nft::file(
+define nft::file (
   String $filename = regsubst($name, '[^a-zA-Z0-9.,_=-]', '_' ,'G'),
   String $extension = '.nft',
 ) {

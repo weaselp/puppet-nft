@@ -30,19 +30,21 @@
 #       'counter drop',
 #     ]
 #   }
-define nft::chain(
+define nft::chain (
   Nft::String $chain = $name,
   Nft::AddressFamily $af = 'inet',
   Nft::String $table = 'filter',
   Boolean $base_chain = $chain =~ Nft::ChainHook,
-  Optional[Nft::ChainHook]     $hook     = if $base_chain { $chain } else { undef },
-  Optional[Nft::ChainType]     $type     = if $base_chain { $table } else { undef },
+  # lint:ignore:optional_default
+  Optional[Nft::ChainHook]     $hook     = if $base_chain { $chain },
+  Optional[Nft::ChainType]     $type     = if $base_chain { $table },
   Optional[Nft::ChainPriority] $priority = if $base_chain {
     "${table}-${chain}" ? {
       'nat-prerouting'    => 'dstnat',
       'nat-postrouting'   => 'srcnat',
       'filter-prerouting' => 'raw',
-      default             => 'filter' } } else { undef },
+  default             => 'filter' } },
+  # lint:endignore
   Integer $rules_order = 0,
   Optional[Array[String]] $rules = undef,
 ) {
@@ -52,7 +54,7 @@ define nft::chain(
     $content = "table ${af} ${table} { chain ${chain} {  }; }"
   }
 
-  ensure_resource('nft::file', '010-chains', { })
+  ensure_resource('nft::file', '010-chains', {})
   nft::fragment { "chains/${af}/${table}/${chain}":
     target  => '010-chains',
     content => $content,
@@ -62,7 +64,7 @@ define nft::chain(
   }
 
   if $rules {
-    nft::rule{ "chain-${chain}-initrules":
+    nft::rule { "chain-${chain}-initrules":
       rule  => $rules.join(";\n  "),
       chain => $chain,
       table => $table,

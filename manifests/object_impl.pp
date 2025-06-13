@@ -28,7 +28,7 @@
 #   nft::object_impl{ 'SIMPLE_SET':
 #     ipv4_elements => [ '192.168.1.1', '192.168.1.2' ],
 #   }
-define nft::object_impl(
+define nft::object_impl (
   Boolean $have_ipv4,
   Boolean $have_ipv6,
   Integer $include_level,
@@ -53,7 +53,6 @@ define nft::object_impl(
   }
   $_have_non_addr_members = $non_addr_elements.length() > 0 or $non_addr_objects.length() > 0
 
-
   if ($ipv4_elements.length() > 0 or $ipv6_elements.length() > 0) and $non_addr_elements.length > 0 {
     fail("Object ${name}: Cannot have address and non-address elements.")
   }
@@ -66,9 +65,9 @@ define nft::object_impl(
   }
 
   $contents = [
-    if $_have_non_addr_members { [$object_name        , $non_addr_elements + $non_addr_objects ] },
-    if $have_ipv4              { ["__4_${object_name}", $ipv4_elements + $ipv4_objects.map |$o| { "\$__4_${o}" }] },
-    if $have_ipv6              { ["__6_${object_name}", $ipv6_elements + $ipv6_objects.map |$o| { "\$__6_${o}" }] },
+    if $_have_non_addr_members {[$object_name        , $non_addr_elements + $non_addr_objects] },
+    if $have_ipv4 {["__4_${object_name}", $ipv4_elements + $ipv4_objects.map |$o| { "\$__4_${o}" }] },
+    if $have_ipv6 {["__6_${object_name}", $ipv6_elements + $ipv6_objects.map |$o| { "\$__6_${o}" }] },
   ].delete_undef_values().map |$_tuple| {
     [$_name, $_elements] = $_tuple
     if $_elements.length > 0 {
@@ -79,11 +78,10 @@ define nft::object_impl(
     }
   }
 
-  ensure_resource('nft::file', $_target, { })
+  ensure_resource('nft::file', $_target, {})
   nft::fragment { "chains/${object_name}":
     target  => $_target,
     content => $contents.join("\n"),
     order   => 50 + $include_level,
   }
 }
-

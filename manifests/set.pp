@@ -11,7 +11,7 @@
 #     type  => 'ipv4_addr',
 #     flags => [ 'timeout' ],
 #   }
-define nft::set(
+define nft::set (
   Nft::Settype $type,
   Nft::Setname $setname = $name,
   Nft::AddressFamily $af = 'inet',
@@ -26,7 +26,7 @@ define nft::set(
   $target = "005-sets/${af}/${table}"
   $content = "table ${af} ${table} { set ${setname} { type ${type}; ${_flags} }; }"
 
-  ensure_resource('nft::file', $target, { })
+  ensure_resource('nft::file', $target, {})
   nft::fragment { "sets/${af}/${table}/${setname}":
     target  => $target,
     content => $content,

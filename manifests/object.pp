@@ -18,7 +18,7 @@
 #   nft::object{ 'CDN':
 #     elements => [ '$CDN_EDGE', '$CDN_MONITORS' ]
 #   }
-define nft::object(
+define nft::object (
   Nft::Objectdefine $object_name = $name,
   Array[String] $elements = [],
 ) {
@@ -31,15 +31,15 @@ define nft::object(
   # Figure out address family of included objects
   $_object_refs = $elements.filter |$a| { $a =~ Nft::Objectreference }
   $_obj_af_info = Hash($_object_refs.map |$o| {
-    $object_ref_name = $o.regsubst(/^\$/, '')
-    $object = Nft::Object_impl[$object_ref_name]
-    [ $object_ref_name,
-      {
-        has_v4        => $object['have_ipv4'],
-        has_v6        => $object['have_ipv6'],
-        include_level => $object['include_level'],
-      }
-    ]
+      $object_ref_name = $o.regsubst(/^\$/, '')
+      $object = Nft::Object_impl[$object_ref_name]
+      [$object_ref_name,
+        {
+          has_v4        => $object['have_ipv4'],
+          has_v6        => $object['have_ipv6'],
+          include_level => $object['include_level'],
+        },
+      ]
   })
   $_objects_v4       = $_obj_af_info.filter |$object_name, $object_info| { $object_info['has_v4'] }
   $_objects_v6       = $_obj_af_info.filter |$object_name, $object_info| { $object_info['has_v6'] }

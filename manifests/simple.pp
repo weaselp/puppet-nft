@@ -107,26 +107,33 @@
 #     action => "redirect to :${gerrit_ssh_port}",
 #   }
 define nft::simple (
-  Optional[Variant[ Stdlib::IP::Address, Nft::Objectreference, Nft::Setreference,
-                    Array[Variant[Stdlib::IP::Address, Nft::Objectreference]]]] $saddr = undef,
-  Optional[Variant[ Stdlib::IP::Address, Nft::Objectreference, Nft::Setreference,
-                    Array[Variant[Stdlib::IP::Address, Nft::Objectreference]]]] $daddr = undef,
-  Optional[Variant[ Stdlib::IP::Address, Nft::Objectreference, Nft::Setreference,
-                    Array[Variant[Stdlib::IP::Address, Nft::Objectreference]]]] $saddr_not = undef,
-  Optional[Variant[ Stdlib::IP::Address, Nft::Objectreference, Nft::Setreference,
-                    Array[Variant[Stdlib::IP::Address, Nft::Objectreference]]]] $daddr_not = undef,
+  Optional[Variant[
+      Stdlib::IP::Address, Nft::Objectreference, Nft::Setreference,
+      Array[Variant[Stdlib::IP::Address, Nft::Objectreference]]
+  ]] $saddr = undef,
+  Optional[Variant[
+      Stdlib::IP::Address, Nft::Objectreference, Nft::Setreference,
+      Array[Variant[Stdlib::IP::Address, Nft::Objectreference]]
+  ]] $daddr = undef,
+  Optional[Variant[
+      Stdlib::IP::Address, Nft::Objectreference, Nft::Setreference,
+      Array[Variant[Stdlib::IP::Address, Nft::Objectreference]]
+  ]] $saddr_not = undef,
+  Optional[Variant[
+      Stdlib::IP::Address, Nft::Objectreference, Nft::Setreference,
+      Array[Variant[Stdlib::IP::Address, Nft::Objectreference]]
+  ]] $daddr_not = undef,
   Optional[Variant[Nft::Port, Nft::Portrange, Array[Variant[Nft::Port, Nft::Portrange], 1]]] $dport = undef,
   Optional[Variant[Nft::Port, Nft::Portrange, Array[Variant[Nft::Port, Nft::Portrange], 1]]] $sport = undef,
-  Optional[Variant[String,Array[String, 1]]] $iif = undef,
-  Optional[Variant[String,Array[String, 1]]] $oif = undef,
-  Optional[Variant[String,Array[String, 1]]] $iifname = undef,
-  Optional[Variant[String,Array[String, 1]]] $oifname = undef,
+  Optional[Variant[String, Array[String, 1]]] $iif = undef,
+  Optional[Variant[String, Array[String, 1]]] $oif = undef,
+  Optional[Variant[String, Array[String, 1]]] $iifname = undef,
+  Optional[Variant[String, Array[String, 1]]] $oifname = undef,
   Optional[Variant[
-    Enum['tcp', 'udp', 'icmp', 'icmpv6'],
-    Integer,
-    Array[Enum['tcp', 'udp', 'icmp', 'icmpv6']],
-    ]]
-    $proto = if ($sport !~ Undef or $dport !~ Undef) { 'tcp' } else { undef },
+      Enum['tcp', 'udp', 'icmp', 'icmpv6'],
+      Integer,
+      Array[Enum['tcp', 'udp', 'icmp', 'icmpv6']],
+  ]] $proto = if ($sport !~ Undef or $dport !~ Undef) { 'tcp' },
   Nft::String         $chain = 'input',
   Nft::AddressFamily  $af = 'inet',
   Nft::String         $table = 'filter',
@@ -155,20 +162,20 @@ define nft::simple (
     $proto_rules = ["meta l4proto ${proto}"]
   }
 
-  $port_rules =
-    [ ['dport', $dport],
-      ['sport', $sport],
-    ].map |$tuple| {
-      [$port_type, $port_spec] = $tuple
-      $_proto = if $proto =~ Array { 'th' } else { $proto }
-      if $port_spec =~ Undef {
-        undef
-      } elsif $port_spec =~ Array {
-        "${_proto} ${port_type} { ${port_spec.join(', ')} }"
-      } else {
-        "${_proto} ${port_type} ${port_spec}"
-      }
+  $port_rules = [
+    ['dport', $dport],
+    ['sport', $sport],
+  ].map |$tuple| {
+    [$port_type, $port_spec] = $tuple
+    $_proto = if $proto =~ Array { 'th' } else { $proto }
+    if $port_spec =~ Undef {
+      undef
+    } elsif $port_spec =~ Array {
+      "${_proto} ${port_type} { ${port_spec.join(', ')} }"
+    } else {
+      "${_proto} ${port_type} ${port_spec}"
     }
+  }
 
   $counterstring = [undef, 'counter'][Integer($counter)]
   if $description {
@@ -192,10 +199,10 @@ define nft::simple (
   ).map |$a| {
     if $a =~ Nft::Setreference {
       $set_name = $a.regsubst(/^@/, '')
-      unless Nft::Set[ $set_name ]['type'] in ['ipv4_addr', 'ipv6_addr'] {
-        fail("Named set ${set_name} is not an address type but ${Nft::Set[ $set_name ]['type']}.")
+      unless Nft::Set[$set_name]['type'] in ['ipv4_addr', 'ipv6_addr'] {
+        fail("Named set ${set_name} is not an address type but ${Nft::Set[$set_name]['type']}.")
       }
-      Nft::Set[ $set_name ]
+      Nft::Set[$set_name]
     }
   }.delete_undef_values()
 
@@ -206,12 +213,11 @@ define nft::simple (
   # .
   # for saddr_not and daddr_not, an empty list is fine and we do not create a
   # limitation based on [sd]addr.
-  [ $addr_4_rules, $addr_create_4_rule, $addr_6_rules, $addr_create_6_rule ] =
-  [
-    [ $saddr    , 'saddr'     , true],
-    [ $saddr_not, 'saddr != ' , false ],
-    [ $daddr    , 'daddr'     , true ],
-    [ $daddr_not, 'daddr != ' , false ],
+  [$addr_4_rules, $addr_create_4_rule, $addr_6_rules, $addr_create_6_rule] = [
+    [$saddr    , 'saddr'     , true],
+    [$saddr_not, 'saddr != ' , false],
+    [$daddr    , 'daddr'     , true],
+    [$daddr_not, 'daddr != ' , false],
   ].reduce([[], true, [], true]) |$rule46_tuple, $this_instance| {
     [$addresses, $rule_string, $rule_is_positive] = $this_instance
     if $addresses =~ Undef {
@@ -266,25 +272,25 @@ define nft::simple (
     $_action = pick($action, 'accept')
   }
 
-  $if_rules =
-    [ ['iif', $iif],
-      ['oif', $oif],
-      ['iifname', $iifname],
-      ['oifname', $oifname],
-    ].map |$tuple| {
-      [$if_type, $if_spec] = $tuple
-      if $if_spec =~ Undef {
-        undef
-      } elsif $if_spec =~ String {
-        "${if_type} ${if_spec}"
-      } elsif $if_spec =~ Array and $if_spec.size == 1 {
-        "${if_type} ${if_spec[0]}"
-      } elsif $if_spec =~ Array {
-        "${if_type} {  ${if_spec.join(', ')} }"
-      } else {
-        fail("Unexpected type for ${if_type}; value is '${if_spec}'.")
-      }
+  $if_rules = [
+    ['iif', $iif],
+    ['oif', $oif],
+    ['iifname', $iifname],
+    ['oifname', $oifname],
+  ].map |$tuple| {
+    [$if_type, $if_spec] = $tuple
+    if $if_spec =~ Undef {
+      undef
+    } elsif $if_spec =~ String {
+      "${if_type} ${if_spec}"
+    } elsif $if_spec =~ Array and $if_spec.size == 1 {
+      "${if_type} ${if_spec[0]}"
+    } elsif $if_spec =~ Array {
+      "${if_type} {  ${if_spec.join(', ')} }"
+    } else {
+      fail("Unexpected type for ${if_type}; value is '${if_spec}'.")
     }
+  }
 
   $do_v4 = (!$addr_4_rules.empty() or $_action4) and $addr_create_4_rule
   $do_v6 = (!$addr_6_rules.empty() or $_action6) and $addr_create_6_rule
@@ -292,17 +298,17 @@ define nft::simple (
   # lint:ignore:140chars
   $_rule =
     if $do_v4 {
-      [ ($if_rules + $proto_rules + $port_rules + $addr_4_rules + [$counterstring, $log_rule, pick($_action4, $_action), $commentstring]).delete_undef_values().join(' ') ]
-    } else { [] }
-    +
-    if $do_v6 {
-      [ ($if_rules + $proto_rules + $port_rules + $addr_6_rules + [$counterstring, $log_rule, pick($_action6, $_action), $commentstring]).delete_undef_values().join(' ') ]
-    } else { [] }
+    [($if_rules + $proto_rules + $port_rules + $addr_4_rules + [$counterstring, $log_rule, pick($_action4, $_action), $commentstring]).delete_undef_values().join(' ')]
+  } else {[] }
+  +
+  if $do_v6 {
+    [($if_rules + $proto_rules + $port_rules + $addr_6_rules + [$counterstring, $log_rule, pick($_action6, $_action), $commentstring]).delete_undef_values().join(' ')]
+  } else {[] }
 
   $rule =
     if $_rule.empty() and $addr_create_4_rule and $addr_create_6_rule {
-      [ ($if_rules + $proto_rules + $port_rules + [$counterstring, $log_rule, $_action, $commentstring]).delete_undef_values().join(' ') ]
-    } else { $_rule }
+    [($if_rules + $proto_rules + $port_rules + [$counterstring, $log_rule, $_action, $commentstring]).delete_undef_values().join(' ')]
+  } else { $_rule }
   # lint:endignore
 
   if $rule.length > 0 {
