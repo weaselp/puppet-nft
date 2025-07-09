@@ -1,5 +1,16 @@
 # Change log
 
+## [0.0.11](https://github.com/weaselp/puppet-nft/tree/v0.0.11) (2025-07-09)
+
+[Full Changelog](https://github.com/weaselp/puppet-nft/compare/v0.0.10...v0.0.11)
+
+** Minor changes **
+
+- Declare compatibility with puppet 8, new RedHats and Debians.
+- Make pdk validate happy.
+- Stricter nft:af\_filter\_address\_set\_object: complain if we get passed
+  non-address objects.
+
 ## [0.0.10](https://github.com/weaselp/puppet-nft/tree/v0.0.10) (2024-07-01)
 
 [Full Changelog](https://github.com/weaselp/puppet-nft/compare/v0.0.9...v0.0.10)
