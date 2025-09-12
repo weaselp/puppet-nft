@@ -70,7 +70,9 @@ define nft::object_impl (
     if $have_ipv6 {["__6_${object_name}", $ipv6_elements + $ipv6_objects.map |$o| { "\$__6_${o}" }] },
   ].delete_undef_values().map |$_tuple| {
     [$_name, $_elements] = $_tuple
-    if $_elements.length > 0 {
+    if $_elements.length == 1 {
+      "define ${_name} = ${_elements[0]}"
+    } elsif $_elements.length > 0 {
       $_str_elements = $_elements.join(",\n  ")
       "define ${_name} = {\n  ${_str_elements}\n  }"
     } else {
