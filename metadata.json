@@ -1,6 +1,6 @@
 {
   "name": "weasel-nft",
-  "version": "0.0.11",
+  "version": "0.0.12",
   "author": "Peter Palfrader",
   "summary": "configure nftables firewalls using puppet",
   "license": "MIT",

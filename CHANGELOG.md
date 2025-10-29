@@ -1,5 +1,14 @@
 # Change log
 
+## [0.0.12](https://github.com/weaselp/puppet-nft/tree/v0.0.12) (2025-10-29)
+
+[Full Changelog](https://github.com/weaselp/puppet-nft/compare/v0.0.11...v0.0.12)
+
+** Minor changes **
+
+- Better support for nft in Debian 13: Do not use set-syntax for objects with
+  only one entry.
+
 ## [0.0.11](https://github.com/weaselp/puppet-nft/tree/v0.0.11) (2025-07-09)
 
 [Full Changelog](https://github.com/weaselp/puppet-nft/compare/v0.0.10...v0.0.11)
