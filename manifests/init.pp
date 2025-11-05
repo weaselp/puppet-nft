@@ -71,14 +71,21 @@ class nft (
     require    => File[$nft::main_prod],
   }
 
-  file { [$nft::dir_test, $nft::dir_prod]:
-    ensure  => directory,
-    mode    => '0755',
-    owner   => 'root',
-    group   => 'root',
-    purge   => true,
-    force   => true,
-    recurse => true,
+  file {
+    default:
+      ensure  => directory,
+      mode    => '0755',
+      owner   => 'root',
+      group   => 'root',
+      purge   => true,
+      force   => true,
+      recurse => true,
+      ;
+    $nft::dir_test:
+      ;
+    $nft::dir_prod:
+      notify => Service['nftables'],
+      ;
   }
 
   file { $nft::main_test:
