@@ -1,5 +1,16 @@
 # Change log
 
+## [0.0.13](https://github.com/weaselp/puppet-nft/tree/v0.0.12) (2025-10-29)
+
+[Full Changelog](https://github.com/weaselp/puppet-nft/compare/v0.0.11...v0.0.12)
+
+** Minor changes **
+
+- Bugfix: We would not reload the nftables service if the only change was
+  removing files from the nftables directory.  These files presumably were
+  previously active, so a reload is in order.  We do that now.
+- Add version 10 to RedHat and Rocky in metadata.
+
 ## [0.0.12](https://github.com/weaselp/puppet-nft/tree/v0.0.12) (2025-10-29)
 
 [Full Changelog](https://github.com/weaselp/puppet-nft/compare/v0.0.11...v0.0.12)
